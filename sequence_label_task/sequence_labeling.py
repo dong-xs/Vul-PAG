@@ -221,7 +221,6 @@ def dataset_get(filename):
         temp_sent = []
         temp_label = []
         for value in sentence_label[i]:
-            print(value)
             lists = value.strip().split('  ')
             temp_sent.append(lists[0])
             temp_label.append(lists[1])
@@ -244,6 +243,13 @@ tag_to_ix={'B-VN':0,'I-VN':1,
 
 word_to_ix={}
 for sentence,tags in train_data:
+    # 此处得到的word_to_ix只能得到train_data里面出现的词，而无法对未出现的词进行处理，
+    # 因此还需要将test_data的词加进去，一起构建成为总体数据的单词向索引映射表
+    for word in sentence:
+        if word not in word_to_ix:
+            word_to_ix[word]=len(word_to_ix)
+
+for sentence,tags in test_data:
     for word in sentence:
         if word not in word_to_ix:
             word_to_ix[word]=len(word_to_ix)
@@ -251,8 +257,11 @@ for sentence,tags in train_data:
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-for epoch in range(100):
+for epoch in range(300):
     for sentence,tags in train_data:
+        # print(sentence)
+        # print(tags)
+        # print('--------------------------------------------')
         model.zero_grad()      #每一步先清除梯度
 
         # 构造输入句子格式
@@ -269,7 +278,7 @@ for epoch in range(100):
 
 def accuracy(list1,list2):
     count=0
-    for predict,orginal in  zip(list1,list2):
+    for predict,orginal in zip(list1,list2):
         if predict==orginal:
             count += 1
     return count/len(list1)
@@ -278,7 +287,8 @@ with torch.no_grad():
     accuracy_score=[]
     for item in test_data:
         precheck_sent=prepare_sequence(item[0],word_to_ix)
-        predict_result=model(precheck_sent).numpy().tolist()
+        predict_result=model(precheck_sent)
+        print(predict_result)
         accuracy_score.append(accuracy(item[1],precheck_sent))
     print(accuracy_score)
     print(np.mean(accuracy_score))

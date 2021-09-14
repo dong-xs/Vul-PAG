@@ -1510,7 +1510,7 @@ default  I-VT
 ,  I-VT
 null  I-VT
 ,  O
-blank   I-VT
+blank  I-VT
 ,  I-VT
 or  I-VT
 missing  I-VT
@@ -2952,7 +2952,7 @@ a  I-VT
 file  I-VT
 system  I-VT
 using  B-VC
-..   I-VC
+..  I-VC
 (  I-VC
 dot  I-VC
 dot  I-VC
@@ -4061,7 +4061,7 @@ parameter  I-VC
 in  I-VC
 meal_rest.asp  I-VC
 ,  O
-and   B-VC
+and  B-VC
 the  I-VC
 resid  I-VC
 parameter  I-VC
@@ -4075,7 +4075,7 @@ cross-site  I-VT
 scripting  I-VT
 (  I-VT
 XSS  I-VT
-)   I-VT
+)  I-VT
 vulnerabilities  I-VT
 in  O
 warforge.NEWS  B-VN
@@ -4344,7 +4344,8 @@ by  O
 a  O
 GSPACE  O
 "  O
-2174|1|1|1|gs:/ d$  O
+2174|1|1|1|gs:/  O
+d$  O
 "  O
 message  O
 ,  O
@@ -4357,11 +4358,12 @@ into  O
 the  O
 filesystem  O
 ;  O
-and   O
+and  O
 a  O
 GSPACE  O
 "  O
-|-135|1|1|0|gs:/  d$  O
+|-135|1|1|0|gs:/  O
+d$  O
 "  O
 message  O
 ,  O
@@ -4804,7 +4806,7 @@ TWiki  B-VN
 through  I-VV
 4.0.4  I-VV
 allows  O
-remote   B-VAV
+remote  B-VAV
 attackers  I-VAV
 to  O
 read  B-VR
@@ -5123,13 +5125,13 @@ large  I-VC
 packet  I-VC
 when  I-VC
 logged  I-VC
-via   O
+via  O
 the  B-VC
 raydium_log  I-VC
 function  I-VC
 in  I-VC
 log.c  I-VC
-or   I-VC
+or  I-VC
 the  I-VC
 raydium_console_line_add  I-VC
 function  I-VC
@@ -5456,14 +5458,14 @@ and  B-VC
 Name  I-VC
 ,  O
 Address  B-VC
-,   O
+,  O
 Zip  B-VC
-,   O
+,  O
 City  B-VC
 ,  O
 Country  B-VC
 ,  O
-and   B-VC
+and  B-VC
 Email  I-VC
 fields  I-VC
 during  I-VC 
@@ -5534,7 +5536,7 @@ or  I-VC
 login  I-VC
 parameter  I-VC
 to  I-VC
-admin/index.php   I-VC
+admin/index.php  I-VC
 .  O
 NOTE:  O
 some  O
@@ -5804,7 +5806,7 @@ delete  I-VR
 files  I-VR
 ,  O
 related  B-VR
-to   I-VR
+to  I-VR
 users/include/do_makeprofile.inc.php  I-VR
 and  I-VR
 users/include/copy.inc.php  I-VR
@@ -5983,7 +5985,7 @@ gallery_id  I-VC
 parameter  I-VC
 in  I-VC
 gallery.asp  I-VC
-and   I-VC
+and  I-VC
 parentcurrentpage  I-VC
 parameter  I-VC
 in  I-VC
@@ -6284,7 +6286,7 @@ an  I-VC
 article  I-VC
 to  I-VC
 articles/edit.php  I-VC
-,    O
+,  O
 the  B-VC
 message  I-VC
 title  I-VC
@@ -6777,7 +6779,7 @@ script  I-VR
 or  I-VR
 HTML  I-VR
 via  O
-the   B-VC
+the  B-VC
 ~urlmime  I-VC
 or  I-VC
 ~command  I-VC
@@ -7209,7 +7211,7 @@ as  B-VC
 demonstrated  I-VC
 using  I-VC
 NISProd.dll  I-VC
-.   O
+.  O
 NOTE:  O
 in  O
 most  O
@@ -7393,7 +7395,7 @@ obtained  O
 from  O
 third  O
 party  O
-sources    O
+sources  O
 .  O
 
 
@@ -7533,13 +7535,13 @@ feature  I-VC
 editor  B-VC
 ,  O
 newswire  B-VC
-,   O
+,  O
 otherpress  B-VC
-,   O
+,  O
 admin  B-VC
-,   O
+,  O
 pbook  B-VC
-,   O
+,  O
 media  B-VC
 ,  O
 or  B-VC
@@ -7640,7 +7642,7 @@ the  B-VC
 command  I-VC
 line  I-VC
 option  I-VC
-or   B-VR
+or  B-VR
 overwrite  I-VR
 arbitrary  I-VR
 files  I-VR
@@ -7758,7 +7760,7 @@ obtained  O
 from  O
 third  O
 party  O
-information    O
+information  O
 .  O
 
 
@@ -8397,7 +8399,7 @@ the  I-VC
 shell  I-VC
 port  I-VC
 (514/tcp)  I-VC
-.   O
+.  O
 NOTE:  O
 this  O
 might  O
@@ -9305,7 +9307,7 @@ attack  I-VC
 on  I-VC
 the  I-VC
 gnucash.trace  I-VC
-,    O
+,  O
 qof.trace  B-VC
 ,  O
 and  B-VC
@@ -9399,7 +9401,7 @@ _MonthText9  B-VC
 ,  O
 _MonthText10  B-VC
 ,  O
-or   B-VC
+or  B-VC
 _MonthText11  I-VC
 property  I-VC
 value  I-VC
@@ -9508,11 +9510,11 @@ vectors  I-VT
 ,  O
 aka  O
 DB08  B-VT
-,   O
+,  O
 DB09  B-VT
-,   O
+,  O
 DB10  B-VT
-,   O
+,  O
 DB11  B-VT
 ,  O
 DB12  B-VT
@@ -9524,10 +9526,10 @@ DB14  B-VT
 DB15  B-VT
 ,  O
 DB16  B-VT
-,   O
+,  O
 DB17  B-VT
 ,  O
-and   O
+and  O
 DB18  B-VT
 .  O
 NOTE:  O
