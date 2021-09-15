@@ -51,11 +51,15 @@ class BiLSTM_CRF(nn.Module):
         # 输出：若一个输入为[m,n]，则会输出一个[m,n,dim]的tensor，即每个位置上词将会用一个dim维的tensor代替。
         # 需要注意的是：这是的Embedding是pytorch自己定义后个嵌入框架，可以使用其他的嵌入方式如BERT、word2vec来代替
         self.lstm=nn.LSTM(embedding_dim,hidden_dim//2,num_layers=1,bidirectional=True)
+        #定义一个单层的LSTM单元，
         # nn.LSTM(input_size,hidden_size,num_layers,bias,batch_first,dropout,bidirectional)。
         # 输入：
         #   input_size:输入数据的特征维数，也就是词向量的维度；
         #   hidden_size: LSTM中隐层的维度；
+        #   请注意，这是设定值为hidden_dim//2是因为，在使用双向LSTM时，前向和后向的最终输出维度为hidden_dim//2，
+        #   将双向联合起来后其输出维度就是hidden_dim，这也便于后续的隐层向输出标签映射时的维度处理。
         #   num_layers:循环神经网络的层数，就是有多少个LSTM层的堆叠：
+        #   如果设置多个网络层数，需要如何调整参数喃？
         #   bias：是否使用偏置，是一个boolen类型；
         #   batch_first:
         #   dropout:默认情况是0，
@@ -116,6 +120,7 @@ class BiLSTM_CRF(nn.Module):
         # print("the _forward_alg value is:",alpha)
         return alpha
 
+    #这这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
     def _get_lstm_features(self, sentence):    #该段用于获取句子的LSTM特征
         self.hidden = self.init_hidden()     #首先初始化隐藏层参数
         embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)    #然后通过嵌入层获得句子的嵌入表示，大小为x行1列
@@ -221,7 +226,6 @@ def dataset_get(filename):
         temp_sent = []
         temp_label = []
         for value in sentence_label[i]:
-            print(value)
             lists = value.strip().split('  ')
             temp_sent.append(lists[0])
             temp_label.append(lists[1])
@@ -248,10 +252,15 @@ for sentence,tags in train_data:
         if word not in word_to_ix:
             word_to_ix[word]=len(word_to_ix)
 
+for sentences,tages in test_data:
+    for word in sentences:
+        if word not in word_to_ix:
+            word_to_ix[word]=len(word_to_ix)
+
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-for epoch in range(100):
+for epoch in range(300):
     for sentence,tags in train_data:
         model.zero_grad()      #每一步先清除梯度
 
@@ -278,7 +287,7 @@ with torch.no_grad():
     accuracy_score=[]
     for item in test_data:
         precheck_sent=prepare_sequence(item[0],word_to_ix)
-        predict_result=model(precheck_sent).numpy().tolist()
+        predict_result=list(model(precheck_sent))
         accuracy_score.append(accuracy(item[1],precheck_sent))
     print(accuracy_score)
     print(np.mean(accuracy_score))
