@@ -9,8 +9,14 @@ torch.manual_seed(1)              #设置cpu的随机数固定
 START_TAG='<START>'
 STOP_TAG='<STOP>'
 
-EMBEDDING_DIM=128     #嵌入层的维度
-HIDDEN_DIM=100        #隐藏层的维度
+# EMBEDDING_DIM=128     #嵌入层的维度
+# HIDDEN_DIM=100        #隐藏层的维度
+#此时的标签准确率为：0.6879145357580627
+
+
+EMBEDDING_DIM=256     #嵌入层的维度
+HIDDEN_DIM=200        #隐藏层的维度
+#此时的标签准确率为：0.6745642066582203
 
 def argmax(vec):
     _,idx=torch.max(vec,1)
@@ -57,7 +63,7 @@ class BiLSTM_CRF(nn.Module):
         #   input_size:输入数据的特征维数，也就是词向量的维度；
         #   hidden_size: LSTM中隐层的维度；
         #   请注意，这是设定值为hidden_dim//2是因为，在使用双向LSTM时，前向和后向的最终输出维度为hidden_dim//2，
-        #   将双向联合起来后其输出维度就是hidden_dim，这也便于后续的隐层向输出标签映射时的维度处理。
+        #   将双向联合起来后其输出维度就是hidden_dim，这也便于后续的隐层向输出标签映射时的维度处理。但是隐藏层维度的意义是什么呢？
         #   num_layers:循环神经网络的层数，就是有多少个LSTM层的堆叠：
         #   如果设置多个网络层数，需要如何调整参数喃？
         #   bias：是否使用偏置，是一个boolen类型；
@@ -260,7 +266,7 @@ for sentences,tages in test_data:
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-for epoch in range(300):
+for epoch in range(2):
     for sentence,tags in train_data:
         model.zero_grad()      #每一步先清除梯度
 
@@ -278,7 +284,7 @@ for epoch in range(300):
 
 def accuracy(list1,list2):
     count=0
-    for predict,orginal in  zip(list1,list2):
+    for predict,orginal in zip(list1,list2):
         if predict==orginal:
             count += 1
     return count/len(list1)
@@ -288,7 +294,12 @@ with torch.no_grad():
     for item in test_data:
         precheck_sent=prepare_sequence(item[0],word_to_ix)
         predict_result=list(model(precheck_sent))
-        accuracy_score.append(accuracy(item[1],precheck_sent))
+        print(item[0])
+        print(item[1])
+        print([tag_to_ix[value] for value in item[1]])
+        print(predict_result[1])
+        print('--------------------------------------------------')
+        accuracy_score.append(accuracy([tag_to_ix[value] for value in item[1]],predict_result[1]))
     print(accuracy_score)
     print(np.mean(accuracy_score))
 

@@ -122,7 +122,7 @@ SE  I-VN
 6u75  B-VV
 ,  O
 7u60  B-VV
-,   O
+,  O
 and  O
 8u5  B-VV
 allows  O
@@ -168,10 +168,10 @@ attackers  I-VAV
 to  O
 inject  B-VR 
 arbitrary  I-VR
-web   I-VR
-script   I-VR
-or   I-VR
-HTML   I-VR
+web  I-VR
+script  I-VR
+or  I-VR
+HTML  I-VR
 via  O
 the  B-VC
 url  I-VC
@@ -194,10 +194,10 @@ commands  I-VR
 via  O
 shell  B-VC
 metacharacters  I-VC 
-in   I-VC 
-the   I-VC 
-d   I-VC 
-parameter   I-VC 
+in  I-VC
+the  I-VC
+d  I-VC
+parameter  I-VC
 .  O
 
 
