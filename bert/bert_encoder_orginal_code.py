@@ -8,7 +8,7 @@ from bert import tokenization
 flags = tf.flags
 FLAGS = flags.FLAGS
 
-bert_path = r'I:\cased_L-12_H-768_A-12'
+bert_path = r'cased_L-12_H-768_A-12'
 root_path = os.getcwd()
 
 flags.DEFINE_string(

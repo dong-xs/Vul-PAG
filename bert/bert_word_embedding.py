@@ -8,6 +8,6 @@
 
 from bert_serving.client import BertClient
 client=BertClient()
-vectors=client.encode(['dog','cat','man'])
+vectors=client.encode(['vpn','shadonsocks','ss'])
 
 print(vectors)

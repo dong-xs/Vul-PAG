@@ -11,12 +11,16 @@ STOP_TAG='<STOP>'
 
 # EMBEDDING_DIM=128     #嵌入层的维度
 # HIDDEN_DIM=100        #隐藏层的维度
-#此时的标签准确率为：0.6879145357580627
+#epoch=2时，此时的标签准确率为：0.6879145357580627
+#epoch=100时，此时的标签准确率为：0.755071453035032
+#epoch=200时，此时的标签准确率为：0.7522936752572541
 
 
 EMBEDDING_DIM=256     #嵌入层的维度
 HIDDEN_DIM=200        #隐藏层的维度
-#此时的标签准确率为：0.6745642066582203
+#epoch=2时，此时的标签准确率为：0.6745642066582203
+#epoch=100时，此时的标签准确率为：0.7302813829403706
+#epoch=200时，此时的标签准确率为：0.732325510130507
 
 def argmax(vec):
     _,idx=torch.max(vec,1)
@@ -266,7 +270,7 @@ for sentences,tages in test_data:
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-for epoch in range(2):
+for epoch in range(200):
     for sentence,tags in train_data:
         model.zero_grad()      #每一步先清除梯度
 
