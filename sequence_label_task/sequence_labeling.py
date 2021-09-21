@@ -16,11 +16,23 @@ STOP_TAG='<STOP>'
 #epoch=200时，此时的标签准确率为：0.7522936752572541
 
 
-EMBEDDING_DIM=256     #嵌入层的维度
-HIDDEN_DIM=200        #隐藏层的维度
+# EMBEDDING_DIM=256     #嵌入层的维度
+# HIDDEN_DIM=200        #隐藏层的维度
 #epoch=2时，此时的标签准确率为：0.6745642066582203
 #epoch=100时，此时的标签准确率为：0.7302813829403706
 #epoch=200时，此时的标签准确率为：0.732325510130507
+
+# EMBEDDING_DIM=768     #嵌入层的维度
+# HIDDEN_DIM=200        #隐藏层的维度
+#epoch=2时，此时的标签准确率为：0.6180113730004223
+#epoch=100时，此时的标签准确率为：0.7199031048175273
+#epoch=200时，此时的标签准确率为：0.6912820730714955
+
+EMBEDDING_DIM=768     #嵌入层的维度
+HIDDEN_DIM=100        #隐藏层的维度
+#epoch=2时，此时的标签准确率为：0.6225644680325083
+#epoch=100时，此时的标签准确率为：0.7199031048175273
+#epoch=200时，此时的标签准确率为：0.7054756110750595
 
 def argmax(vec):
     _,idx=torch.max(vec,1)
@@ -298,19 +310,11 @@ with torch.no_grad():
     for item in test_data:
         precheck_sent=prepare_sequence(item[0],word_to_ix)
         predict_result=list(model(precheck_sent))
-        print(item[0])
-        print(item[1])
-        print([tag_to_ix[value] for value in item[1]])
-        print(predict_result[1])
-        print('--------------------------------------------------')
+        # print(item[0])
+        # print(item[1])
+        # print([tag_to_ix[value] for value in item[1]])
+        # print(predict_result[1])
+        # print('--------------------------------------------------')
         accuracy_score.append(accuracy([tag_to_ix[value] for value in item[1]],predict_result[1]))
     print(accuracy_score)
     print(np.mean(accuracy_score))
-
-
-# with torch.no_grad():
-#     precheck_sent=prepare_sequence(train_data[-1][0],word_to_ix)
-#     print(train_data[-1][0])
-#     print(model(precheck_sent))
-
-#接下来应该优化的工作是找一个测试集，并且第一步给出标注准确率情况
