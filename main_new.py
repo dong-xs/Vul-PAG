@@ -41,8 +41,6 @@ def get_all_sentence(sentence, tag_pos):
                 break
         # 至今已经找到了所有的index，接下来需要判断两两字符间是否可以构成一个完整的句子
 
-    for index_list
-
     return index_list
 
 
