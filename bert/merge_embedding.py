@@ -9,8 +9,8 @@
 import spacy
 from bert_word_embedding import BertEmbedding
 
-spacy_nlp=spacy.load('en_core_web_sm')
-# spacy_nlp=spacy.load('en_core_web_md')
+# spacy_nlp=spacy.load('en_core_web_sm')
+spacy_nlp=spacy.load('en_core_web_md')
 #宿舍电脑用的是en_core_web_sm，实验室电脑用的是en_core_web_md
 
 sentence='Arbitrary command execution via buffer overflow in Count.cgi (wwwcount) cgi-bin program.'
