@@ -8,6 +8,7 @@
 
 import spacy
 from bert_word_embedding import BertEmbedding
+import torch
 
 # spacy_nlp=spacy.load('en_core_web_sm')
 spacy_nlp = spacy.load('en_core_web_md')
@@ -80,16 +81,28 @@ def merge_embedding(embeds):     #该函数实现将以“##”开头的词进�
 
     return bert_token,bert_embedding
 
+def split_index(str1,list1):
+    for items in list1:
+        if str1.startswith(items):
+            return list1.index(items),items
+
 # step2：将已出现词组合成spacy token中的词形式，最终输出肯定要按照
 def spacy_bert_tokenizer_merge(bert_T,bert_E,content):
     docs = spacy_nlp(content)
     spacy_token = [str(token) for token in docs]  # 经spacy的tokenizer后的单词列表
-    diff_bert=list(set(bert_T)-set(spacy_token))
+    #在bert的token中出现的，一定会在spacy中出现，但在spacy中出现的不一定会参bert中出现，因此要找在spacy中而不在bert中的那些词
     diff_spacy=list(set(spacy_token)-set(bert_T))
-    print('bert_T',bert_T)
-    print('spacy_T', spacy_token)
-    print(diff_bert)
-    print(diff_spacy)
+    for diff_s in diff_spacy:
+        index=[]
+        embedding=torch.tensor(0)
+        while diff_s is not None:
+            temp_index,item=split_index(diff_s,bert_T)
+            index.append(temp_index)
+            diff_s=diff_s.split(item,1)[1:]
+        for value in index:
+            embedding+=bert_embedding[value][0]
+
+
 
 new_token,new_embedding=merge_embedding(bert_embedding)
 spacy_bert_tokenizer_merge(new_token,new_embedding,sentence)
