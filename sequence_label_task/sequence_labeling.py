@@ -310,11 +310,6 @@ with torch.no_grad():
     for item in test_data:
         precheck_sent=prepare_sequence(item[0],word_to_ix)
         predict_result=list(model(precheck_sent))
-        # print(item[0])
-        # print(item[1])
-        # print([tag_to_ix[value] for value in item[1]])
-        # print(predict_result[1])
-        # print('--------------------------------------------------')
         accuracy_score.append(accuracy([tag_to_ix[value] for value in item[1]],predict_result[1]))
     print(accuracy_score)
     print(np.mean(accuracy_score))

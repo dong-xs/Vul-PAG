@@ -9,17 +9,17 @@
 import spacy
 from bert_word_embedding import BertEmbedding
 import torch
+from numpy import *
 
-spacy_nlp = spacy.load('en_core_web_sm')
-# spacy_nlp = spacy.load('en_core_web_md')
+# spacy_nlp = spacy.load('en_core_web_sm')
+spacy_nlp = spacy.load('en_core_web_md')
 # 宿舍电脑用的是en_core_web_sm，实验室电脑用的是en_core_web_md
 
 sentence = 'Arbitrary command execution via buffer overflow in Count.cgi (wwwcount) cgi-bin program.'
 sentence1 = 'Information from SSL-encrypted sessions via PKCS #1'
 # 问题又来了，如果将上面这个句子进行解析，会有这种上下序列解析不一致的情况，例如：Count.cgi在spacy中没有解析出错，但在bert中会解析为Count . c ##gi这四个部分。
 
-bert_embedding = BertEmbedding(sentence, 1, 0)
-
+bert_embedding = BertEmbedding(sentence, 1, 0)     #bert_embedding的类型是一个字典类型，key值为一个subtoken，value为其tensor
 
 # 经tokenizer后发现，bert的token主要存在两种异常：
 # （1）因为bert使用的是wordpiece，所以会使得将一个长的单词切分成几段
@@ -40,7 +40,7 @@ def merge_embedding(embeds):  # 该函数实现将以“##”开头的词进行�
 
     bert_token = [key for key, value in embeds.items()][1:-1]  # 经bert的嵌入后的单词列表，类型为列表，元素长度为23
 
-    bert_embedding = [value for key, value in embeds.items()][1:-1]  # 去除掉头部的[cls]和尾部的[sep]，类型为列表,元素长度为23，
+    bert_embeddings = [value for key, value in embeds.items()][1:-1]  # 去除掉头部的[cls]和尾部的[sep]，类型为列表,元素长度为23，
     # 其中每一个位置上是一个列表，列表中只有一个元素，且这个元素为一个tensor，
     # 维度为：768。因此要embedding中每个词的值为：bert_embedding[i][0]
 
@@ -62,26 +62,28 @@ def merge_embedding(embeds):  # 该函数实现将以“##”开头的词进行�
 
     for s, e in zip(start, end):
         temp_token = bert_token[s]
-        temp_embedding = bert_embedding[s][0]
-        for i in range(s + 1, e + 1):
-            temp_token += bert_token[i][2:]
-            bert_token[i] = '-10000'
-            temp_embedding += bert_embedding[i][0]
-            bert_embedding[i][0] = -10000
+        temp_embedding = bert_embeddings[s][0]
+        for j in range(s + 1, e + 1):
+            temp_token += bert_token[j][2:]
+            bert_token[j] = '-10000'
+            temp_embedding +=bert_embeddings[j][0]
+            bert_embeddings[j] = -10000
         temp_embedding = temp_embedding / (e - s + 1)
-        bert_embedding[s][0] = temp_embedding  # 将嵌入部分进行合并，并且原“##”开头位置被代替为-10000
+        bert_embeddings[s] = temp_embedding  # 将嵌入部分进行合并，并且原“##”开头位置被代替为-10000
         bert_token[s] = temp_token  # 得到合并后的token，原来以“##”开头的位置被代替为“-10000”
-    index = []  # 用于存储
-    for indexes in range(len(bert_embedding)):
-        if isinstance(bert_embedding[indexes][0], int):  # 只有替换为-10000的位置上为int，其余位置都为list类型
+
+
+    index = []  # 用于存储为-10000位置的索引
+    for indexes in range(len(bert_embeddings)):
+        if isinstance(bert_embeddings[indexes], int):  # 只有替换为-10000的位置上为int，其余位置都为list类型
             index.append(indexes)
 
-    bert_embedding = [bert_embedding[i] for i in range(len(bert_embedding)) if (i not in index)]
+    bert_embeddings = [bert_embeddings[i] for i in range(len(bert_embeddings)) if (i not in index)]
 
     while '-10000' in bert_token:
         bert_token.remove('-10000')
 
-    return bert_token, bert_embedding
+    return bert_token, bert_embeddings
 
 
 def split_index(str1, list1):
@@ -90,7 +92,7 @@ def split_index(str1, list1):
             return list1.index(items), items
 
 
-# step2：将已出现词组合成spacy token中的词形式，最终输出肯定要按照
+# step2：将已出现词组合成spacy token中的词形式，最终输出按照spacy token的顺序依次成为字典输出
 def spacy_bert_tokenizer_merge(bert_T, bert_E, content):
     docs = spacy_nlp(content)
     spacy_token = [str(token) for token in docs]  # 经spacy的tokenizer后的单词列表
@@ -101,26 +103,21 @@ def spacy_bert_tokenizer_merge(bert_T, bert_E, content):
     # 先处理两者的差集
     diff_spacy = list(set(spacy_token) - set(bert_T))
     diff_result = {}  # 用于存储所有在diff_spacy中的结果
-    print(bert_embedding)
-    print(bert_T)
-    print(diff_spacy)
 
     for diff_s in diff_spacy:  # 遍历diff_spacy中的每一个元素
+        copy_diff_s=diff_s
         index = []
         embedding = torch.zeros(1,768)  #生成一个一行768列的全0 tensor
-        while diff_s!='':   # 当每一个元素不为空字符串时
+        while diff_s!='':   # 当每一个元素不为空字符串时，因为split在最后一次切分后必定会出现一个空字符串''，以些作为循环结束条件
             temp_index, item = split_index(diff_s.strip(), bert_T)  # 将每个diff_s都在bert-T找到对应的词以及索引位置
             index.append(temp_index)  # 暂存每个子词的索引位置
             diff_s = diff_s.split(item, 1)[-1]  # 用于暂存split后的结果,split后会形成一个列表，因为设置了只分割一次，每次分割后用后面的一部分作为新的diff_s
 
         for value in index:  # 接下来需要将各个索引位置的值进行相加
-            # print(value)
-            # print(bert_embedding[bert_T[value]])
-            # print(bert_embedding[bert_T[value]][0])
-            embedding += bert_embedding[bert_T[value]][0]
+            embedding += bert_E[value][0]
         embedding = embedding / len(index)  # 这是输出的是一个词的embedding
-        diff_result['diff_s'] = embedding
-        print(diff_result)
+        diff_result[copy_diff_s] = embedding
+
 
     # 对spacy_token进行遍历以找到每个词对应的embedding
     for items in range(len(spacy_token)):
@@ -128,9 +125,9 @@ def spacy_bert_tokenizer_merge(bert_T, bert_E, content):
             final_embed[items] = bert_E[bert_T.index(spacy_token[items])]
         elif spacy_token[items] in list(diff_result.keys()):
             final_embed[items] = diff_result[spacy_token[items]]
-    return final_embed
+    zipped_final=dict(zip(spacy_token,final_embed))
+    return zipped_final
 
 
 new_token, new_embedding = merge_embedding(bert_embedding)
-embeddings = spacy_bert_tokenizer_merge(new_token, new_embedding, sentence)
-print(embeddings)
+zipped_embeddings = spacy_bert_tokenizer_merge(new_token, new_embedding, sentence)

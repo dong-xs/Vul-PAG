@@ -68,6 +68,6 @@ def BertEmbedding(content,summed_lasted_4_layer,concate_lasted_4_layer):
         #到目前为止，返回每个token的嵌入向量，以字典形式返回。
 
     if concate_lasted_4_layer:
-        return concate_lasted_4_layer_list   #返回每个token的维度为768
+        return concate_lasted_4_layer_list   #返回每个token的维度为3072
     if summed_lasted_4_layer:
-        return summed_lasted_4_layer_list    #返回每个token的维度为3072
+        return summed_lasted_4_layer_list    #返回每个token的维度为768
