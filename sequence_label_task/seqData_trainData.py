@@ -1,3 +1,4 @@
+#encoding:utf-8
 #本py文件的作用就是：将标注的数据组合成seq文件中train_data的形式
 
 def dataset_get(filename):   #该函数用于构建训练集和测试集

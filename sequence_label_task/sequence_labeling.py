@@ -3,6 +3,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+from .multihead_attention import SelfAttention
 
 torch.manual_seed(1)              #设置cpu的随机数固定
 
@@ -73,6 +74,9 @@ class BiLSTM_CRF(nn.Module):
         # 输出：若一个输入为[m,n]，则会输出一个[m,n,dim]的tensor，即每个位置上词将会用一个dim维的tensor代替。
         # 需要注意的是：这是的Embedding是pytorch自己定义后个嵌入框架，可以使用其他的嵌入方式如BERT、word2vec来代替
         self.lstm=nn.LSTM(embedding_dim,hidden_dim//2,num_layers=1,bidirectional=True)
+
+        self.attention=SelfAttention(hidden_dim,n_heads=12,dropout=0.01,device=None)
+
         #定义一个单层的LSTM单元，
         # nn.LSTM(input_size,hidden_size,num_layers,bias,batch_first,dropout,bidirectional)。
         # 输入：
@@ -111,7 +115,7 @@ class BiLSTM_CRF(nn.Module):
         self.hidden=self.init_hidden()
 
     def init_hidden(self):
-        temps=(torch.randn(2,1,self.hidden_dim//2),torch.randn(2,1,self.hidden_dim//2))
+        # temps=(torch.randn(2,1,self.hidden_dim//2),torch.randn(2,1,self.hidden_dim//2))
         # print("the initinal value of hidden is :",temps)
         return (torch.randn(2,1,self.hidden_dim//2),torch.randn(2,1,self.hidden_dim//2))
     #初始化隐藏层，隐藏层为两个2行1列的tensor构成，每个位置上tensor值由一个hidden_dim大小的tensor构成
@@ -142,15 +146,16 @@ class BiLSTM_CRF(nn.Module):
         # print("the _forward_alg value is:",alpha)
         return alpha
 
-    #这这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
+    #这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
     def _get_lstm_features(self, sentence):    #该段用于获取句子的LSTM特征
         self.hidden = self.init_hidden()     #首先初始化隐藏层参数
         embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)    #然后通过嵌入层获得句子的嵌入表示，大小为x行1列
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)     #直接通过pytorch给定的LSMT函数获取上下文特征
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)   #
+        _,attention_score=self.attention(lstm_out,lstm_out,lstm_out)
         lstm_feats = self.hidden2tag(lstm_out)
         # print("the value of lstm_feats is:",lstm_feats)
-        return lstm_feats
+        return lstm_feats,attention_score
 
     def _score_sentence(self, feats, tags):   #对每个分区句子的打分
         # Gives the score of a provided tag sequence
@@ -206,7 +211,9 @@ class BiLSTM_CRF(nn.Module):
         return forward_score-gold_score
 
     def forward(self,sentence):
-        lstm_feats=self._get_lstm_features(sentence)    #得到LSTM的输出判定概率
+        lstm_feats,attention_score=self._get_lstm_features(sentence)    #得到LSTM的输出判定概率
+        #
+
         score,tag_seq=self._viterbi_decode(lstm_feats)      #viterbi接收LSTM的输出，并返回各个路径的评分以及最优的序列
         return score,tag_seq     #这个就是整个模型的最终输出，每次输出有两个值，分别是最优得分及其对应的序列
 

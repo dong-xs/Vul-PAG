@@ -10,18 +10,20 @@ import pandas as pd
 import spacy
 
 spacy_nlp = spacy.load('en_core_web_md')
-content = pd.read_csv('test.csv', encoding='utf-8')
+content = pd.read_csv('test_data.csv', encoding='gb2312')
 
 description = content['description']
 cveid = content['ID']
-v_type = content['Vtype']
-v_time = content['Vtime']
-v_version = content['VV']
-v_name = content['VN']
-v_position = content['VP']
-v_attack_vector = content['VAV']
-v_condition = content['VC']
-v_result = content['VR']
+v_name = content['VN(name)']
+v_version = content['VV(version)']
+v_type = content['VT(type)']
+v_root_cause = content['VRC(root cause)']
+v_condition = content['VC(condition)']
+v_position = content['VP(position)']
+v_attacker_type = content['VAT(attacker type)']
+v_attack_vector = content['VAV(attack vector)']
+v_result = content['VR(result)']
+v_fixed = content['VF(fixed)']
 
 import operator
 
@@ -30,12 +32,12 @@ def index_get(sent, v_tag, B_tag, I_tag):
     # 输入为句子、划分好的种类、种类的开始标签、种类的中间标签
     # 输出为特定类别在句子中出现的位置及其对应的标签
     # 已经假定了v_tag是存在的，因此需要先对v_tag是否为进行判断，如果在标注数据中不存在这些标签，则返回None
+    print(sent)
     if isinstance(v_tag, str):
-
         sent_doc = spacy_nlp(sent.strip())
         sent_data = [str(token) for token in sent_doc]  # 构造成每个元素都是单词的列表形式
         label = ['O' for index in range(len(sent_data))]  # 构造一个全为‘O’的标签
-        new_v_tag = v_tag.split(' VUL123 ')  # 存在标注标签交错的情况，尤其针对VN和VV，因此加上了“ VUL123 ”做为分割符
+        new_v_tag = v_tag.split(' |n ')  # 存在标注标签交错的情况，尤其针对VN和VV，因此加上了“ \n ”做为分割符
 
         for v_tags in new_v_tag:
             tag_doc = spacy_nlp(v_tags.strip())
@@ -43,7 +45,6 @@ def index_get(sent, v_tag, B_tag, I_tag):
 
             str_len = len(tag_data)  # 标签字符的长度值
             base_index = sent_data.index(tag_data[0])  # 找到标签首字母出现的首个位置
-
             while base_index < len(sent_data):
                 if operator.eq(sent_data[base_index:base_index + str_len], tag_data) and label[base_index] == 'O':
                     label[base_index] = B_tag  # 起始位置的索引
@@ -57,8 +58,9 @@ def index_get(sent, v_tag, B_tag, I_tag):
         return None
 
 
-def merge_label(VN_label, VV_label, Vtype_label, Vtime_label, VP_label, VAV_label, VC_label, VR_label):
-    # 输入为8种标签的8个label序列
+def merge_label(VN_label, VV_label, Vtype_label, Vroot_cause_label, VC_label, VP_label, Vattacker_type_label,
+                Vattack_vector_label, VR_label, Vfixed_label):
+    # 输入为10种标签的10个label序列
     # 输出为一个合成后完整的label序列
     # 先筛选出不为空的候选标签列表
     useful_label = []
@@ -68,16 +70,20 @@ def merge_label(VN_label, VV_label, Vtype_label, Vtime_label, VP_label, VAV_labe
         useful_label.append(VV_label)
     if Vtype_label is not None:
         useful_label.append(Vtype_label)
-    if Vtime_label is not None:
-        useful_label.append(Vtime_label)
-    if VP_label is not None:
-        useful_label.append(VP_label)
-    if VAV_label is not None:
-        useful_label.append(VAV_label)
+    if Vroot_cause_label is not None:
+        useful_label.append(Vroot_cause_label)
     if VC_label is not None:
         useful_label.append(VC_label)
+    if VP_label is not None:
+        useful_label.append(VP_label)
+    if Vattacker_type_label is not None:
+        useful_label.append(Vattacker_type_label)
+    if Vattack_vector_label is not None:
+        useful_label.append(Vattack_vector_label)
     if VR_label is not None:
         useful_label.append(VR_label)
+    if Vfixed_label is not None:
+        useful_label.append(Vfixed_label)
 
     line_length = len(useful_label[0])  # 每个元素标签有多少维
     row_length = len(useful_label)  # 共有多少个元素标签
@@ -91,24 +97,28 @@ def merge_label(VN_label, VV_label, Vtype_label, Vtime_label, VP_label, VAV_labe
                 label[i] = item
     return label
 
-f_write=open('content_label_zip.txt','w')
+
+f_write = open('../generate_data/content_label_zip.txt', 'w')
 
 for indexes in range(len(description)):
     VN_labels = index_get(description[indexes], v_name[indexes], 'B-VN', 'I-VN')
     VV_labels = index_get(description[indexes], v_version[indexes], 'B-VV', 'I-VV')
-    Vtype_labels = index_get(description[indexes], v_type[indexes], 'B-VType', 'I-VType')
-    Vtime_labels = index_get(description[indexes], v_time[indexes], 'B-VTime', 'I-VTime')
-    VP_labels = index_get(description[indexes], v_position[indexes], 'B-VP', 'I-VP')
-    VAV_labels = index_get(description[indexes], v_attack_vector[indexes], 'B-VAV', 'I-VAV')
+    Vtype_labels = index_get(description[indexes], v_type[indexes], 'B-VT', 'I-VT')
+    Vroot_cause_labels = index_get(description[indexes], v_root_cause[indexes], 'B-VRC', 'I-VRC')
     VC_labels = index_get(description[indexes], v_condition[indexes], 'B-VC', 'I-VC')
+    VP_labels = index_get(description[indexes], v_position[indexes], 'B-VP', 'I-VP')
+    Vattacker_type_labels = index_get(description[indexes], v_attacker_type[indexes], 'B-VAT', 'I-VAT')
+    Vattack_vector_labels = index_get(description[indexes], v_attack_vector[indexes], 'B-VAV', 'I-VAV')
     VR_labels = index_get(description[indexes], v_result[indexes], 'B-VR', 'I-VR')
-    final_label = merge_label(VN_labels, VV_labels, Vtype_labels, Vtime_labels, VP_labels, VAV_labels, VC_labels,
-                              VR_labels)
-    #到这一步已经可以正确的划分出来的，接下来就是输出了，将sent_data和final_label组合起来，然后写入到txt文件中去
+    Vfixed_labels = index_get(description[indexes], v_fixed[indexes], 'B-VF', 'I-VF')
+
+    final_label = merge_label(VN_labels, VV_labels, Vtype_labels, Vroot_cause_labels, VC_labels, VP_labels,
+                              Vattacker_type_labels, Vattack_vector_labels, VR_labels, Vfixed_labels)
+    # 到这一步已经可以正确的划分出来的，接下来就是输出了，将sent_data和final_label组合起来，然后写入到txt文件中去
 
     sent_data = [str(token) for token in spacy_nlp(description[indexes])]
     for value in range(len(sent_data)):
-        temp='  '.join([sent_data[value],final_label[value],'\n'])
+        temp = '  '.join([sent_data[value], final_label[value], '\n'])
         f_write.write(temp)
     f_write.write('\n')
     f_write.write('\n')
