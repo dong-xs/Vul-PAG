@@ -115,10 +115,21 @@ class BiLSTM_CRF(nn.Module):
         self.hidden=self.init_hidden()
 
     def init_hidden(self):
-        # temps=(torch.randn(2,1,self.hidden_dim//2),torch.randn(2,1,self.hidden_dim//2))
-        # print("the initinal value of hidden is :",temps)
+        #初始化的根本目的是随机生成输入时的h0，这里生成两个tensor的原因是使用BiLSTM，从前和从后面都需要初始化向量，但是每个向量的初始化为（2，1，hidden//2）是为啥喃？
         return (torch.randn(2,1,self.hidden_dim//2),torch.randn(2,1,self.hidden_dim//2))
     #初始化隐藏层，隐藏层为两个2行1列的tensor构成，每个位置上tensor值由一个hidden_dim大小的tensor构成
+
+    #这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
+    def _get_lstm_features(self, sentence):    #该段用于获取句子的LSTM特征
+        self.hidden = self.init_hidden()     #首先初始化隐藏层参数
+        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)    #然后通过嵌入层获得句子的嵌入表示，大小为x行1列
+        lstm_out, self.hidden = self.lstm(embeds, self.hidden)     #直接通过pytorch给定的LSMT函数获取上下文特征
+        #根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
+        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)   #
+        _,attention_score=self.attention(lstm_out,lstm_out,lstm_out)
+        lstm_feats = self.hidden2tag(lstm_out)
+        # print("the value of lstm_feats is:",lstm_feats)
+        return lstm_feats,attention_score
 
     def _forward_alg(self,feats):   #使用前向算法来计算分区函数
         init_alphas=torch.full((1,self.tagset_size),-10000.)
@@ -129,7 +140,7 @@ class BiLSTM_CRF(nn.Module):
         # 因此上式就是返回一个1行target_size列的张量，每个位置上的值为-10000.0
 
         init_alphas[0][self.tag_to_ix[START_TAG]]=0.
-        #将初始化的参数第0行，START_TAG标签所在列的值设置为0,即
+        #将初始化的参数第0行，START_TAG标签所在列的值设置为0
 
         forward_var=init_alphas    #赋值给forward
 
@@ -146,16 +157,6 @@ class BiLSTM_CRF(nn.Module):
         # print("the _forward_alg value is:",alpha)
         return alpha
 
-    #这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
-    def _get_lstm_features(self, sentence):    #该段用于获取句子的LSTM特征
-        self.hidden = self.init_hidden()     #首先初始化隐藏层参数
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)    #然后通过嵌入层获得句子的嵌入表示，大小为x行1列
-        lstm_out, self.hidden = self.lstm(embeds, self.hidden)     #直接通过pytorch给定的LSMT函数获取上下文特征
-        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)   #
-        _,attention_score=self.attention(lstm_out,lstm_out,lstm_out)
-        lstm_feats = self.hidden2tag(lstm_out)
-        # print("the value of lstm_feats is:",lstm_feats)
-        return lstm_feats,attention_score
 
     def _score_sentence(self, feats, tags):   #对每个分区句子的打分
         # Gives the score of a provided tag sequence
@@ -289,7 +290,9 @@ for sentences,tages in test_data:
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-for epoch in range(200):
+epoch_iter=200
+
+for epoch in range(epoch_iter):
     for sentence,tags in train_data:
         model.zero_grad()      #每一步先清除梯度
 
@@ -303,6 +306,7 @@ for epoch in range(200):
         #梯度更新与参数更新
         loss.backward()
         optimizer.step()
+    print('Epoch [%d/%d] loss=%.4f' %(epoch+1,epoch_iter,loss.item()))
     print("epoch: %d is finished!!!"%epoch)
 
 def accuracy(list1,list2):
