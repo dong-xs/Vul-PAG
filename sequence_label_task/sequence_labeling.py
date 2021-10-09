@@ -262,18 +262,21 @@ def dataset_get(filename):
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-train_data=dataset_get('merge_label_train.txt')
-test_data=dataset_get('lqd_label_result_test.txt')
+train_data=dataset_get('train_data_zip.txt')
+test_data=dataset_get('test_data_zip.txt')
 
-tag_to_ix={'B-VN':0,'I-VN':1,
-           'B-VV':2,'I-VV':3,
-           'B-VT':4,'I-VT':5,
-           'B-VC':6,'I-VC':7,
-           'B-VAV':8,'I-VAV':9,
-           'B-VR':10,'I-VR':11,
-           'B-VP':12,'I-VP':13,
-           'B-VF':14,'I-VF':15,
-           'O':16,START_TAG:17,STOP_TAG:18}
+
+tag_to_ix = {'B-VN': 0, 'I-VN': 1,
+             'B-VV': 2, 'I-VV': 3,
+             'B-VT': 4, 'I-VT': 5,
+             'B-VRC': 6, 'I-VRC': 7,
+             'B-VC': 8, 'I-VC': 9,
+             'B-VP': 10, 'I-VP': 11,
+             'B-VAT': 12, 'I-VAT': 13,
+             'B-VAV': 14, 'I-VAV': 15,
+             'B-VR': 16, 'I-VR': 17,
+             'B-VF': 18, 'I-VF': 19,
+             'O': 20, START_TAG: 21, STOP_TAG: 22}
 #添加自己标注数据部分到这儿为止
 
 word_to_ix={}
@@ -290,7 +293,7 @@ for sentences,tages in test_data:
 model=BiLSTM_CRF(len(word_to_ix),tag_to_ix,EMBEDDING_DIM,HIDDEN_DIM)
 optimizer=optim.SGD(model.parameters(),lr=0.01,weight_decay=1e-4)
 
-epoch_iter=200
+epoch_iter=10
 
 for epoch in range(epoch_iter):
     for sentence,tags in train_data:

@@ -36,6 +36,9 @@ def dataset_get(filename):   #该函数用于构建训练集和测试集
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-trains_data=dataset_get('merge_label_train.txt')
-test_data=dataset_get('lqd_label_result_test.txt')
+# trains_data=dataset_get('merge_label_train.txt')
+# test_data=dataset_get('lqd_label_result_test.txt')
+
+trains_data=dataset_get('../generate_data/train_data_zip.txt')
+test_data=dataset_get('../generate_data/test_data_zip.txt')
 print(test_data)
