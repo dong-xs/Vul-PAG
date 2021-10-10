@@ -15,6 +15,11 @@ STOP_TAG = '<STOP>'
 
 EMBEDDING_DIM=768     #嵌入层的维度
 HIDDEN_DIM=100        #隐藏层的维度
+
+from transformers import BertModel,BertTokenizer
+bertModel=BertModel.from_pretrained('bert-base-cased', output_hidden_states=True)
+bertModel.eval()
+
 # epoch=2时，此时的标签准确率为：0.6879145357580627
 # epoch=100时，此时的标签准确率为：0.755071453035032
 # epoch=200时，此时的标签准确率为：0.7522936752572541
@@ -74,7 +79,7 @@ class BiLSTM_CRF(nn.Module):
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)  # tagset_size用于存储标签类别数
 
-        # self.word_embeds=BertEmbedding(,1,0)
+        self.word_embeds=bertModel()   #使用bertModel作为word_embeds的方法，因为bert中需要用到的参数只有维度为768，在这里是不需要设置的
 
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
         # 定义一个单层的LSTM单元，
@@ -123,11 +128,9 @@ class BiLSTM_CRF(nn.Module):
     # 这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
     def _get_lstm_features(self, sentence):  # 该段用于获取句子的LSTM特征
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
-        print(sentence)     #这儿的sentence是句子的one-hot编码
 
-        #对于在这儿
+        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列
 
-        embeds = self.word_embeds(sentence,1,0).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
         # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
@@ -271,7 +274,7 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
 # 添加自己标注数据部分到这儿为止
 
-word_to_ix = {}
+word_to_ix = {}   #存储语料中所有出现的词，并为每个词分配一个索引值
 for sentence, tags in train_data:
     for word in sentence:
         if word not in word_to_ix:
@@ -282,7 +285,7 @@ for sentences, tages in test_data:
         if word not in word_to_ix:
             word_to_ix[word] = len(word_to_ix)
 
-model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
+model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)   #初始化一个模型，模型中可能用到的参数为四个，也就是说初始化的参数表示该类中可能用到的一些值
 optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 epoch_iter = 10

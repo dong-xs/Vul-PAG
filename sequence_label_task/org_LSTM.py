@@ -48,7 +48,7 @@ def argmax(vec):
     # 输出：两个tensor，第一个tensor表示每行/每列的最大值，第二个tensor表示最大值的索引。
     # 因此上面这一句的作用是返回一个输入tensor在行上的最大值，且将其索引存放于idx这样的一个tensor中
     return idx.item()  # tensor.item()表示获取该tensor的元素值
-    # 综上所述，该函数的意义就是返回一个输入tensor在一行上最大的索引值。
+    # 综上所述，该函数的意义就是返回一个输入tensor在每一行上最大的索引值。
 
 
 def prepare_sequence(seq, to_ix):
@@ -69,7 +69,7 @@ def log_sum_exp(vec):  # 返回一个tensor中所有值与最大值的log sum ex
 
 class BiLSTM_CRF(nn.Module):
     def __init__(self, vocab_size, tag_to_ix, embedding_dim, hidden_dim):
-        # 需要输入的参数包括：文本大小、标签与索引对应列表、嵌入层维度、隐层维度
+        # 需要输入的参数包括：文本大小、标签与索引对应列表、嵌入层维度、隐层维度，这些参数是在初始化的时候需要输入的
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -80,7 +80,7 @@ class BiLSTM_CRF(nn.Module):
         self.word_embeds = nn.Embedding(vocab_size, embedding_dim)
         # nn.Embedding(size,dim)
         # 输入：size表示文本一共有多少个词，dim表示为每个词设置的嵌入维度
-        # 输出：若一个输入为[m,n]，则会输出一个[m,n,dim]的tensor，即每个位置上词将会用一个dim维的tensor代替。
+        # 输出：若一个输入为m个词，则会输出一个[m,dim]的tensor，即每个位置上词将会用一个dim维的tensor代替。
         # 需要注意的是：这是的Embedding是pytorch自己定义后的嵌入框架，可以使用其他的嵌入方式如BERT、word2vec来代替
 
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
@@ -119,7 +119,7 @@ class BiLSTM_CRF(nn.Module):
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
         # 将STOP_TAG标签对应索引所在列全部设置为-10000
 
-        self.hidden = self.init_hidden()
+        # self.hidden = self.init_hidden()
 
     def init_hidden(self):
         # 初始化的根本目的是随机生成输入时的h0，这里生成两个tensor的原因是使用BiLSTM，从前和从后面都需要初始化向量，但是每个向量的初始化为（2，1，hidden//2）是为啥喃？
@@ -133,7 +133,7 @@ class BiLSTM_CRF(nn.Module):
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
         # print(sentence)   #此处的sentence是每个句子的one-hot编码
 
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列
+        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列,每个位置上的
 
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
         # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
@@ -276,7 +276,7 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
 # 添加自己标注数据部分到这儿为止
 from torch.autograd import Variable
-word_to_ix = {}
+word_to_ix = {}     #获取所有word对应的索引值
 for sentence, tags in train_data:
     for word in sentence:
         if word not in word_to_ix:
@@ -287,10 +287,10 @@ for sentences, tages in test_data:
         if word not in word_to_ix:
             word_to_ix[word] = len(word_to_ix)
 
-model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
-optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
+model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)      #初始化一个模型
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)      #使用SGD进行优化
 
-epoch_iter = 10
+epoch_iter = 2
 
 for epoch in range(epoch_iter):
     for sentence, tags in train_data:
