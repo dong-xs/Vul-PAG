@@ -1,5 +1,5 @@
 #encoding:utf-8
-#本py文件的作用就是：将标注的数据组合成seq文件中train_data的形式
+#本py文件的作用就是：将标注的数据组合成seq文件中train_data的形式，该函数的方法与org_LSTM中的dataset_get()一致
 
 def dataset_get(filename):   #该函数用于构建训练集和测试集
     data = open(filename, 'r')
@@ -29,7 +29,6 @@ def dataset_get(filename):   #该函数用于构建训练集和测试集
         temp_sent = []
         temp_label = []
         for value in sentence_label[i]:
-            print(value)
             lists = value.strip().split('  ')
             temp_sent.append(lists[0])
             temp_label.append(lists[1])

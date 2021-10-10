@@ -7,16 +7,20 @@ import torch.optim as optim
 import numpy as np
 
 torch.manual_seed(1)  # 设置cpu的随机数固定
+device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
 
-# EMBEDDING_DIM=128     #嵌入层的维度
-# HIDDEN_DIM=100        #隐藏层的维度
+EMBEDDING_DIM=128     #嵌入层的维度
+HIDDEN_DIM=100        #隐藏层的维度
 # epoch=2时，此时的标签准确率为：0.6879145357580627
 # epoch=100时，此时的标签准确率为：0.755071453035032
 # epoch=200时，此时的标签准确率为：0.7522936752572541
 
+# EMBEDDING_DIM=128     #嵌入层的维度
+# HIDDEN_DIM=50        #隐藏层的维度
+# epoch=10时，此时的标签准确率为：0.7338673233938774
 
 # EMBEDDING_DIM=256     #嵌入层的维度
 # HIDDEN_DIM=200        #隐藏层的维度
@@ -30,8 +34,8 @@ STOP_TAG = '<STOP>'
 # epoch=100时，此时的标签准确率为：0.7199031048175273
 # epoch=200时，此时的标签准确率为：0.6912820730714955
 
-EMBEDDING_DIM = 768  # 嵌入层的维度
-HIDDEN_DIM = 100  # 隐藏层的维度
+# EMBEDDING_DIM = 768  # 嵌入层的维度
+# HIDDEN_DIM = 100  # 隐藏层的维度
 
 # epoch=2时，此时的标签准确率为：0.6225644680325083
 # epoch=100时，此时的标签准确率为：0.7199031048175273
@@ -77,7 +81,7 @@ class BiLSTM_CRF(nn.Module):
         # nn.Embedding(size,dim)
         # 输入：size表示文本一共有多少个词，dim表示为每个词设置的嵌入维度
         # 输出：若一个输入为[m,n]，则会输出一个[m,n,dim]的tensor，即每个位置上词将会用一个dim维的tensor代替。
-        # 需要注意的是：这是的Embedding是pytorch自己定义后个嵌入框架，可以使用其他的嵌入方式如BERT、word2vec来代替
+        # 需要注意的是：这是的Embedding是pytorch自己定义后的嵌入框架，可以使用其他的嵌入方式如BERT、word2vec来代替
 
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
         # 定义一个单层的LSTM单元，
@@ -125,7 +129,10 @@ class BiLSTM_CRF(nn.Module):
 
     # 这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
     def _get_lstm_features(self, sentence):  # 该段用于获取句子的LSTM特征
+
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
+        # print(sentence)   #此处的sentence是每个句子的one-hot编码
+
         embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列
 
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
@@ -133,7 +140,6 @@ class BiLSTM_CRF(nn.Module):
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  #
 
         lstm_feats = self.hidden2tag(lstm_out)      #返回每个词属于一个类别的概率值
-        # print("the value of lstm_feats is:",lstm_feats)
         return lstm_feats
 
     def _forward_alg(self, feats):  # 使用前向算法来计算分区函数
@@ -159,7 +165,6 @@ class BiLSTM_CRF(nn.Module):
             forward_var = torch.cat(alphas_t).view(1, -1)
         terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
         alpha = log_sum_exp(terminal_var)
-        # print("the _forward_alg value is:",alpha)
         return alpha
 
     def _score_sentence(self, feats, tags):  # 对每个分区句子的打分
@@ -169,7 +174,6 @@ class BiLSTM_CRF(nn.Module):
         for i, feat in enumerate(feats):
             score = score + self.transitions[tags[i + 1], tags[i]] + feat[tags[i + 1]]
         score = score + self.transitions[self.tag_to_ix[STOP_TAG], tags[-1]]
-        # print('the score of sentence is :',score)
         return score
 
     def _viterbi_decode(self, feats):  # 使用维特比算法处理输出端的解码问题，这个阶段我不需要进行处理
@@ -212,7 +216,6 @@ class BiLSTM_CRF(nn.Module):
         feats = self._get_lstm_features(sentence)  # 得到一个句子的LSMT判定结果
         forward_score = self._forward_alg(feats)  # 根据LSTM的判定概率得到对该判定结果的得分
         gold_score = self._score_sentence(feats, tags)  # 最优序列结果的得分
-        # print("the diff of forward_score and gold_score is :",forward_score-gold_score)
         return forward_score - gold_score
 
     def forward(self, sentence):
@@ -272,7 +275,7 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'B-VF': 18, 'I-VF': 19,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
 # 添加自己标注数据部分到这儿为止
-
+from torch.autograd import Variable
 word_to_ix = {}
 for sentence, tags in train_data:
     for word in sentence:
@@ -296,7 +299,8 @@ for epoch in range(epoch_iter):
         # 构造输入句子格式
         sentence_in = prepare_sequence(sentence, word_to_ix)
         targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
-
+        # sentence_in, targets = Variable(data).to(device), Variable(
+        #     target).to(device)
         # 对model执行前向运行
         loss = model.neg_log_likelihood(sentence_in, targets)
 

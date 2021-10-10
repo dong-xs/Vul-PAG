@@ -10,8 +10,8 @@ import pandas as pd
 import spacy
 
 spacy_nlp = spacy.load('en_core_web_md')
-# content = pd.read_csv('train_data.csv', encoding='gb2312')
-content = pd.read_csv('test_data.csv', encoding='gb2312')
+content = pd.read_csv('train_data.csv', encoding='gb2312')
+# content = pd.read_csv('test_data.csv', encoding='gb2312')
 
 description = content['description']
 cveid = content['ID']
@@ -99,8 +99,9 @@ def merge_label(VN_label, VV_label, Vtype_label, Vroot_cause_label, VC_label, VP
     return label
 
 
-# f_write = open('../generate_data/train_data_zip.txt', 'w')
-f_write = open('../generate_data/test_data_zip.txt', 'w')
+# 输出的文件，包括输入和输出两个文件
+f_write = open('../generate_data/train_data_zip.txt', 'w')
+# f_write = open('../generate_data/test_data_zip.txt', 'w')
 
 for indexes in range(len(description)):
     VN_labels = index_get(description[indexes], v_name[indexes], 'B-VN', 'I-VN')

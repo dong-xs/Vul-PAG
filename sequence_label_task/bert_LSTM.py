@@ -1,154 +1,155 @@
+#encoding:utf-8
+
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from bert.merge_embedding import spacy_bert_tokenizer_merge
+from bert.bert_word_embedding import BertEmbedding
 
-torch.manual_seed(1)  # ÉèÖÃcpuµÄËæ»úÊı¹Ì¶¨
+torch.manual_seed(1)  # è®¾ç½®cpuçš„éšæœºæ•°å›ºå®š
 
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
 
-# EMBEDDING_DIM=128     #Ç¶Èë²ãµÄÎ¬¶È
-# HIDDEN_DIM=100        #Òş²Ø²ãµÄÎ¬¶È
-# epoch=2Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.6879145357580627
-# epoch=100Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.755071453035032
-# epoch=200Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.7522936752572541
+EMBEDDING_DIM=768     #åµŒå…¥å±‚çš„ç»´åº¦
+HIDDEN_DIM=100        #éšè—å±‚çš„ç»´åº¦
+# epoch=2æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.6879145357580627
+# epoch=100æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.755071453035032
+# epoch=200æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.7522936752572541
 
 
-# EMBEDDING_DIM=256     #Ç¶Èë²ãµÄÎ¬¶È
-# HIDDEN_DIM=200        #Òş²Ø²ãµÄÎ¬¶È
-# epoch=2Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.6745642066582203
-# epoch=100Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.7302813829403706
-# epoch=200Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.732325510130507
+# EMBEDDING_DIM=256     #åµŒå…¥å±‚çš„ç»´åº¦
+# HIDDEN_DIM=200        #éšè—å±‚çš„ç»´åº¦
+# epoch=2æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.6745642066582203
+# epoch=100æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.7302813829403706
+# epoch=200æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.732325510130507
 
-# EMBEDDING_DIM=768     #Ç¶Èë²ãµÄÎ¬¶È
-# HIDDEN_DIM=200        #Òş²Ø²ãµÄÎ¬¶È
-# epoch=2Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.6180113730004223
-# epoch=100Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.7199031048175273
-# epoch=200Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.6912820730714955
+# EMBEDDING_DIM=768     #åµŒå…¥å±‚çš„ç»´åº¦
+# HIDDEN_DIM=200        #éšè—å±‚çš„ç»´åº¦
+# epoch=2æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.6180113730004223
+# epoch=100æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.7199031048175273
+# epoch=200æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.6912820730714955
 
-EMBEDDING_DIM = 768  # Ç¶Èë²ãµÄÎ¬¶È
-HIDDEN_DIM = 100  # Òş²Ø²ãµÄÎ¬¶È
-
-
-# epoch=2Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.6225644680325083
-# epoch=100Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.7199031048175273
-# epoch=200Ê±£¬´ËÊ±µÄ±êÇ©×¼È·ÂÊÎª£º0.7054756110750595
+# EMBEDDING_DIM = 768  # åµŒå…¥å±‚çš„ç»´åº¦
+# HIDDEN_DIM = 100  # éšè—å±‚çš„ç»´åº¦
+# epoch=2æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.6225644680325083
+# epoch=100æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.7199031048175273
+# epoch=200æ—¶ï¼Œæ­¤æ—¶çš„æ ‡ç­¾å‡†ç¡®ç‡ä¸ºï¼š0.7054756110750595
 
 def argmax(vec):
     _, idx = torch.max(vec, 1)
-    # torch.max(input,dim)£º
-    # ÊäÈë£ºtensor£¬dim¡¾ËµÃ÷£ºtensor¾ÍÊÇÒ»¸öÊäÈëÖµ£¬dim±íÊ¾Î¬¶È£¬ÆäÖĞ0±íÊ¾Ã¿ÁĞµÄ×î´óÖµ£¬1±íÊ¾Ã¿ĞĞµÄ×î´óÖµ¡¿
-    # Êä³ö£ºÁ½¸ötensor£¬µÚÒ»¸ötensor±íÊ¾Ã¿ĞĞ/Ã¿ÁĞµÄ×î´óÖµ£¬µÚ¶ş¸ötensor±íÊ¾×î´óÖµµÄË÷Òı¡£
-    # Òò´ËÉÏÃæÕâÒ»¾äµÄ×÷ÓÃÊÇ·µ»ØÒ»¸öÊäÈëtensorÔÚĞĞÉÏµÄ×î´óÖµ£¬ÇÒ½«ÆäË÷Òı´æ·ÅÓÚidxÕâÑùµÄÒ»¸ötensorÖĞ
-    return idx.item()  # tensor.item()±íÊ¾»ñÈ¡¸ÃtensorµÄÔªËØÖµ
-    # ×ÛÉÏËùÊö£¬¸Ãº¯ÊıµÄÒâÒå¾ÍÊÇ·µ»ØÒ»¸öÊäÈëtensorÔÚÒ»ĞĞÉÏ×î´óµÄË÷ÒıÖµ¡£
+    # torch.max(input,dim)ï¼š
+    # è¾“å…¥ï¼štensorï¼Œdimã€è¯´æ˜ï¼štensorå°±æ˜¯ä¸€ä¸ªè¾“å…¥å€¼ï¼Œdimè¡¨ç¤ºç»´åº¦ï¼Œå…¶ä¸­0è¡¨ç¤ºæ¯åˆ—çš„æœ€å¤§å€¼ï¼Œ1è¡¨ç¤ºæ¯è¡Œçš„æœ€å¤§å€¼ã€‘
+    # è¾“å‡ºï¼šä¸¤ä¸ªtensorï¼Œç¬¬ä¸€ä¸ªtensorè¡¨ç¤ºæ¯è¡Œ/æ¯åˆ—çš„æœ€å¤§å€¼ï¼Œç¬¬äºŒä¸ªtensorè¡¨ç¤ºæœ€å¤§å€¼çš„ç´¢å¼•ã€‚
+    # å› æ­¤ä¸Šé¢è¿™ä¸€å¥çš„ä½œç”¨æ˜¯è¿”å›ä¸€ä¸ªè¾“å…¥tensoråœ¨è¡Œä¸Šçš„æœ€å¤§å€¼ï¼Œä¸”å°†å…¶ç´¢å¼•å­˜æ”¾äºidxè¿™æ ·çš„ä¸€ä¸ªtensorä¸­
+    return idx.item()  # tensor.item()è¡¨ç¤ºè·å–è¯¥tensorçš„å…ƒç´ å€¼
+    # ç»¼ä¸Šæ‰€è¿°ï¼Œè¯¥å‡½æ•°çš„æ„ä¹‰å°±æ˜¯è¿”å›ä¸€ä¸ªè¾“å…¥tensoråœ¨ä¸€è¡Œä¸Šæœ€å¤§çš„ç´¢å¼•å€¼ã€‚
 
 
 def prepare_sequence(seq, to_ix):
-    # seqÊÇÒ»¸öÊäÈëµÄĞòÁĞ£¬
-    # to_ixÊÇÒ»¸ö±êÇ©¶ÔĞòÁĞ
-    idxs = [to_ix[w] for w in seq]  # Õâ¾ä´úÂëµÄÒâË¼ÊÇ½«ĞòÁĞÖĞµÄÃ¿¸ö´Ê×ª»»µ½¶ÔÓ¦µÄµÄ±êÇ©ĞòÁĞÉÏ£¬·µ»ØÄ£Ê½ÎªÒ»¸öÁĞ±í
-    return torch.tensor(idxs, dtype=torch.long)  # ½«ÉÏÊöÁĞ±íĞÎÊ½×ª»»Îªtensor¸ñÊ½
+    # seqæ˜¯ä¸€ä¸ªè¾“å…¥çš„åºåˆ—ï¼Œ
+    # to_ixæ˜¯ä¸€ä¸ªæ ‡ç­¾å¯¹åºåˆ—
+    idxs = [to_ix[w] for w in seq]  # è¿™å¥ä»£ç çš„æ„æ€æ˜¯å°†åºåˆ—ä¸­çš„æ¯ä¸ªè¯è½¬æ¢åˆ°å¯¹åº”çš„çš„æ ‡ç­¾åºåˆ—ä¸Šï¼Œè¿”å›æ¨¡å¼ä¸ºä¸€ä¸ªåˆ—è¡¨
+    return torch.tensor(idxs, dtype=torch.long)  # å°†ä¸Šè¿°åˆ—è¡¨å½¢å¼è½¬æ¢ä¸ºtensoræ ¼å¼
 
 
-def log_sum_exp(vec):  # ·µ»ØÒ»¸ötensorÖĞËùÓĞÖµÓë×î´óÖµµÄlog sum exp
-    max_score = vec[0, argmax(vec)]  # argmax(vec)½«·µ»ØvecÔÚĞĞÉÏµÄ×î´óÖµ£¬Ôòmax_score½«»á´æ·ÅvecÏòÁ¿ÔÚĞĞÉÏµÄ×î´óÖµ
+def log_sum_exp(vec):  # è¿”å›ä¸€ä¸ªtensorä¸­æ‰€æœ‰å€¼ä¸æœ€å¤§å€¼çš„log sum exp
+    max_score = vec[0, argmax(vec)]  # argmax(vec)å°†è¿”å›vecåœ¨è¡Œä¸Šçš„æœ€å¤§å€¼ï¼Œåˆ™max_scoreå°†ä¼šå­˜æ”¾vecå‘é‡åœ¨è¡Œä¸Šçš„æœ€å¤§å€¼
     max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
-    # tensor.view(1,-1)±íÊ¾½«Ô­Ê¼tensor¸Ä±äÎª1ĞĞ£¬
-    # tensor.expand(a,b)±íÊ¾½«Ô­À´µÄtensor¸´ÖÆÀ©Õ¹ÎªaĞĞbÁĞµÄÒ»¸ötensor£¬
-    # Òò´Ëmax_score_broadcast´æ·ÅµÄÊÇÒÔvec×î´óÖµÎªÔªËØµÄ1ĞĞvecÔªËØ¸öÊıÁĞµÄtensor
+    # tensor.view(1,-1)è¡¨ç¤ºå°†åŸå§‹tensoræ”¹å˜ä¸º1è¡Œï¼Œ
+    # tensor.expand(a,b)è¡¨ç¤ºå°†åŸæ¥çš„tensorå¤åˆ¶æ‰©å±•ä¸ºaè¡Œbåˆ—çš„ä¸€ä¸ªtensorï¼Œ
+    # å› æ­¤max_score_broadcastå­˜æ”¾çš„æ˜¯ä»¥vecæœ€å¤§å€¼ä¸ºå…ƒç´ çš„1è¡Œvecå…ƒç´ ä¸ªæ•°åˆ—çš„tensor
     return max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
 
 
 class BiLSTM_CRF(nn.Module):
     def __init__(self, vocab_size, tag_to_ix, embedding_dim, hidden_dim):
-        # ĞèÒªÊäÈëµÄ²ÎÊı°üÀ¨£ºÎÄ±¾´óĞ¡¡¢±êÇ©ÓëË÷Òı¶ÔÓ¦ÁĞ±í¡¢Ç¶Èë²ãÎ¬¶È¡¢Òş²ãÎ¬¶È
+        # éœ€è¦è¾“å…¥çš„å‚æ•°åŒ…æ‹¬ï¼šæ–‡æœ¬å¤§å°ã€æ ‡ç­¾ä¸ç´¢å¼•å¯¹åº”åˆ—è¡¨ã€åµŒå…¥å±‚ç»´åº¦ã€éšå±‚ç»´åº¦
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.vocab_size = vocab_size
         self.tag_to_ix = tag_to_ix
-        self.tagset_size = len(tag_to_ix)  # tagset_sizeÓÃÓÚ´æ´¢±êÇ©Àà±ğÊı
+        self.tagset_size = len(tag_to_ix)  # tagset_sizeç”¨äºå­˜å‚¨æ ‡ç­¾ç±»åˆ«æ•°
 
-        self.word_embeds=spacy_bert_tokenizer_merge()
-        # nn.Embedding(size,dim)
-        # ÊäÈë£ºsize±íÊ¾ÎÄ±¾Ò»¹²ÓĞ¶àÉÙ¸ö´Ê£¬dim±íÊ¾ÎªÃ¿¸ö´ÊÉèÖÃµÄÇ¶ÈëÎ¬¶È
-        # Êä³ö£ºÈôÒ»¸öÊäÈëÎª[m,n]£¬Ôò»áÊä³öÒ»¸ö[m,n,dim]µÄtensor£¬¼´Ã¿¸öÎ»ÖÃÉÏ´Ê½«»áÓÃÒ»¸ödimÎ¬µÄtensor´úÌæ¡£
-        # ĞèÒª×¢ÒâµÄÊÇ£ºÕâÊÇµÄEmbeddingÊÇpytorch×Ô¼º¶¨Òåºó¸öÇ¶Èë¿ò¼Ü£¬¿ÉÒÔÊ¹ÓÃÆäËûµÄÇ¶Èë·½Ê½ÈçBERT¡¢word2vecÀ´´úÌæ
+        # self.word_embeds=BertEmbedding(,1,0)
 
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
-        # ¶¨ÒåÒ»¸öµ¥²ãµÄLSTMµ¥Ôª£¬
-        # nn.LSTM(input_size,hidden_size,num_layers,bias,batch_first,dropout,bidirectional)¡£
-        # ÊäÈë£º
-        #   input_size:ÊäÈëÊı¾İµÄÌØÕ÷Î¬Êı£¬Ò²¾ÍÊÇ´ÊÏòÁ¿µÄÎ¬¶È£»
-        #   hidden_size: LSTMÖĞÒş²ãµÄÎ¬¶È£»
-        #   Çë×¢Òâ£¬ÕâÊÇÉè¶¨ÖµÎªhidden_dim//2ÊÇÒòÎª£¬ÔÚÊ¹ÓÃË«ÏòLSTMÊ±£¬Ç°ÏòºÍºóÏòµÄ×îÖÕÊä³öÎ¬¶ÈÎªhidden_dim//2£¬
-        #   ½«Ë«ÏòÁªºÏÆğÀ´ºóÆäÊä³öÎ¬¶È¾ÍÊÇhidden_dim£¬ÕâÒ²±ãÓÚºóĞøµÄÒş²ãÏòÊä³ö±êÇ©Ó³ÉäÊ±µÄÎ¬¶È´¦Àí¡£µ«ÊÇÒş²Ø²ãÎ¬¶ÈµÄÒâÒåÊÇÊ²Ã´ÄØ£¿
-        #   num_layers:Ñ­»·Éñ¾­ÍøÂçµÄ²ãÊı£¬¾ÍÊÇÓĞ¶àÉÙ¸öLSTM²ãµÄ¶Ñµş£º
-        #   Èç¹ûÉèÖÃ¶à¸öÍøÂç²ãÊı£¬ĞèÒªÈçºÎµ÷Õû²ÎÊıà«£¿
-        #   bias£ºÊÇ·ñÊ¹ÓÃÆ«ÖÃ£¬ÊÇÒ»¸öboolenÀàĞÍ£»
+        # å®šä¹‰ä¸€ä¸ªå•å±‚çš„LSTMå•å…ƒï¼Œ
+        # nn.LSTM(input_size,hidden_size,num_layers,bias,batch_first,dropout,bidirectional)ã€‚
+        # è¾“å…¥ï¼š
+        #   input_size:è¾“å…¥æ•°æ®çš„ç‰¹å¾ç»´æ•°ï¼Œä¹Ÿå°±æ˜¯è¯å‘é‡çš„ç»´åº¦ï¼›
+        #   hidden_size: LSTMä¸­éšå±‚çš„ç»´åº¦ï¼›
+        #   è¯·æ³¨æ„ï¼Œè¿™æ˜¯è®¾å®šå€¼ä¸ºhidden_dim//2æ˜¯å› ä¸ºï¼Œåœ¨ä½¿ç”¨åŒå‘LSTMæ—¶ï¼Œå‰å‘å’Œåå‘çš„æœ€ç»ˆè¾“å‡ºç»´åº¦ä¸ºhidden_dim//2ï¼Œ
+        #   å°†åŒå‘è”åˆèµ·æ¥åå…¶è¾“å‡ºç»´åº¦å°±æ˜¯hidden_dimï¼Œè¿™ä¹Ÿä¾¿äºåç»­çš„éšå±‚å‘è¾“å‡ºæ ‡ç­¾æ˜ å°„æ—¶çš„ç»´åº¦å¤„ç†ã€‚ä½†æ˜¯éšè—å±‚ç»´åº¦çš„æ„ä¹‰æ˜¯ä»€ä¹ˆå‘¢ï¼Ÿ
+        #   num_layers:å¾ªç¯ç¥ç»ç½‘ç»œçš„å±‚æ•°ï¼Œå°±æ˜¯æœ‰å¤šå°‘ä¸ªLSTMå±‚çš„å †å ï¼š
+        #   å¦‚æœè®¾ç½®å¤šä¸ªç½‘ç»œå±‚æ•°ï¼Œéœ€è¦å¦‚ä½•è°ƒæ•´å‚æ•°å–ƒï¼Ÿ
+        #   biasï¼šæ˜¯å¦ä½¿ç”¨åç½®ï¼Œæ˜¯ä¸€ä¸ªboolenç±»å‹ï¼›
         #   batch_first:
-        #   dropout:Ä¬ÈÏÇé¿öÊÇ0£¬
-        #   bidirectional:ÊÇ·ñÊ¹ÓÃË«ÏòLSTM£¬Ò²ÊÇÒ»¸öboolenÀàĞÍ¡£
-        # Êä³ö£ºÖ÷Òª°üÀ¨Á½¸ö²¿·Ö£¬¼´output£¬£¨hn£¬cn£©
-        #       output£º±£´æÃ¿¸öÊ±¼ä²½µÄÊä³ö
-        #       hn£º¾ä×Ó×îºóÒ»¸öµ¥´ÊµÄÒş×´Ì¬
-        #       cn£º¾ä×Ó×îºóÒ»¸öµ¥´ÊµÄÏ¸°û×´Ì¬
+        #   dropout:é»˜è®¤æƒ…å†µæ˜¯0ï¼Œ
+        #   bidirectional:æ˜¯å¦ä½¿ç”¨åŒå‘LSTMï¼Œä¹Ÿæ˜¯ä¸€ä¸ªboolenç±»å‹ã€‚
+        # è¾“å‡ºï¼šä¸»è¦åŒ…æ‹¬ä¸¤ä¸ªéƒ¨åˆ†ï¼Œå³outputï¼Œï¼ˆhnï¼Œcnï¼‰
+        #       outputï¼šä¿å­˜æ¯ä¸ªæ—¶é—´æ­¥çš„è¾“å‡º
+        #       hnï¼šå¥å­æœ€åä¸€ä¸ªå•è¯çš„éšçŠ¶æ€
+        #       cnï¼šå¥å­æœ€åä¸€ä¸ªå•è¯çš„ç»†èƒçŠ¶æ€
 
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)
-        # nn.Linear(in_feature,out_feature)ÓÃÓÚÉèÖÃÍøÂçÖĞµÄÈ«Á¬½Ó²ã
-        # in_feature:±íÊ¾ÍøÂçµÄÊäÈëÎ¬¶È£»
-        # out_feature£º±íÊ¾ÍøÂçµÄÊä³öÎ¬¶È£»
-        # ×îÖÕÊä³ö¾ÍÊÇÒ»¸ötarget_sizeĞĞtarget_sizeÁĞµÄtensor
+        # nn.Linear(in_feature,out_feature)ç”¨äºè®¾ç½®ç½‘ç»œä¸­çš„å…¨è¿æ¥å±‚
+        # in_feature:è¡¨ç¤ºç½‘ç»œçš„è¾“å…¥ç»´åº¦ï¼›
+        # out_featureï¼šè¡¨ç¤ºç½‘ç»œçš„è¾“å‡ºç»´åº¦ï¼›
+        # æœ€ç»ˆè¾“å‡ºå°±æ˜¯ä¸€ä¸ªtarget_sizeè¡Œtarget_sizeåˆ—çš„tensor
 
         self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
-        # nn.Parameter()£ºÕâ¸öº¯Êı¿ÉÒÔÀí½âÎªÒ»¸öÀàĞÍ×ª»»º¯Êı£¬¾ÍÊÇ½«Ò»¸ö²»¿ÉÑµÁ·µÄtensorÀàĞÍ×ª»»Îª¿ÉÒÔÑµÁ·µÄparameterÀàĞÍ£»
-        # torch.randn(a,b)£º·µ»ØÒ»¸öËæ»ú±êÁ¿¾ØÕó£¬´óĞ¡ÎªaĞĞbÁĞ£¬ÇÒÉú³ÉµÄÖµ·û´ÓÕıÌ¬·Ö²¼£»
-        # torch.rand(a,b):·µ»ØÒ»¸öaĞĞbÁĞµÄËæ»ú±êÌâ¾ØÕó£¬ÇÒÄÚÈİ·û´Ó¾ùÔÈ·Ö²¼£»
-        # Òò´Ë¸ÃÓï¾äµÄÒâË¼¾ÍÊÇÉú³ÉÒ»¸ötagset_size´óĞ¡µÄ±ê×¼¾ØÕóºó²¢½«Æä×ª»»Îª¿ÉÑµÁ·µÄparameterĞÎÊ½£¬´æÓÚtransitions±äÁ¿ÖĞ¡£
+        # nn.Parameter()ï¼šè¿™ä¸ªå‡½æ•°å¯ä»¥ç†è§£ä¸ºä¸€ä¸ªç±»å‹è½¬æ¢å‡½æ•°ï¼Œå°±æ˜¯å°†ä¸€ä¸ªä¸å¯è®­ç»ƒçš„tensorç±»å‹è½¬æ¢ä¸ºå¯ä»¥è®­ç»ƒçš„parameterç±»å‹ï¼›
+        # torch.randn(a,b)ï¼šè¿”å›ä¸€ä¸ªéšæœºæ ‡é‡çŸ©é˜µï¼Œå¤§å°ä¸ºaè¡Œbåˆ—ï¼Œä¸”ç”Ÿæˆçš„å€¼ç¬¦ä»æ­£æ€åˆ†å¸ƒï¼›
+        # torch.rand(a,b):è¿”å›ä¸€ä¸ªaè¡Œbåˆ—çš„éšæœºæ ‡é¢˜çŸ©é˜µï¼Œä¸”å†…å®¹ç¬¦ä»å‡åŒ€åˆ†å¸ƒï¼›
+        # å› æ­¤è¯¥è¯­å¥çš„æ„æ€å°±æ˜¯ç”Ÿæˆä¸€ä¸ªtagset_sizeå¤§å°çš„æ ‡å‡†çŸ©é˜µåå¹¶å°†å…¶è½¬æ¢ä¸ºå¯è®­ç»ƒçš„parameterå½¢å¼ï¼Œå­˜äºtransitionså˜é‡ä¸­ã€‚
 
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000
-        # ½«START_TAG±êÇ©¶ÔÓ¦Ë÷ÒıËùÔÚĞĞÈ«²¿ÉèÖÃÎª-10000
+        # å°†START_TAGæ ‡ç­¾å¯¹åº”ç´¢å¼•æ‰€åœ¨è¡Œå…¨éƒ¨è®¾ç½®ä¸º-10000
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
-        # ½«STOP_TAG±êÇ©¶ÔÓ¦Ë÷ÒıËùÔÚÁĞÈ«²¿ÉèÖÃÎª-10000
+        # å°†STOP_TAGæ ‡ç­¾å¯¹åº”ç´¢å¼•æ‰€åœ¨åˆ—å…¨éƒ¨è®¾ç½®ä¸º-10000
 
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
-        # ³õÊ¼»¯µÄ¸ù±¾Ä¿µÄÊÇËæ»úÉú³ÉÊäÈëÊ±µÄh0£¬ÕâÀïÉú³ÉÁ½¸ötensorµÄÔ­ÒòÊÇÊ¹ÓÃBiLSTM£¬´ÓÇ°ºÍ´ÓºóÃæ¶¼ĞèÒª³õÊ¼»¯ÏòÁ¿£¬µ«ÊÇÃ¿¸öÏòÁ¿µÄ³õÊ¼»¯Îª£¨2£¬1£¬hidden//2£©ÊÇÎªÉ¶à«£¿
+        # åˆå§‹åŒ–çš„æ ¹æœ¬ç›®çš„æ˜¯éšæœºç”Ÿæˆè¾“å…¥æ—¶çš„h0ï¼Œè¿™é‡Œç”Ÿæˆä¸¤ä¸ªtensorçš„åŸå› æ˜¯ä½¿ç”¨BiLSTMï¼Œä»å‰å’Œä»åé¢éƒ½éœ€è¦åˆå§‹åŒ–å‘é‡ï¼Œä½†æ˜¯æ¯ä¸ªå‘é‡çš„åˆå§‹åŒ–ä¸ºï¼ˆ2ï¼Œ1ï¼Œhidden//2ï¼‰æ˜¯ä¸ºå•¥å–ƒï¼Ÿ
         return (torch.randn(2, 1, self.hidden_dim // 2), torch.randn(2, 1, self.hidden_dim // 2))
 
-    # ³õÊ¼»¯Òş²Ø²ã£¬Òş²Ø²ãÎªÁ½¸ö2ĞĞ1ÁĞµÄtensor¹¹³É£¬Ã¿¸öÎ»ÖÃÉÏtensorÖµÓÉÒ»¸öhidden_dim´óĞ¡µÄtensor¹¹³É
+    # åˆå§‹åŒ–éšè—å±‚ï¼Œéšè—å±‚ä¸ºä¸¤ä¸ª2è¡Œ1åˆ—çš„tensoræ„æˆï¼Œæ¯ä¸ªä½ç½®ä¸Štensorå€¼ç”±ä¸€ä¸ªhidden_dimå¤§å°çš„tensoræ„æˆ
 
-    # Õâ¸ö_get_lstm_featuresº¯Êı¾ÍÊÇÓÃÓÚ»ñÈ¡LSTMµÄÌØÕ÷£¬Èç¹ûÒª½øĞĞÒş²Ø²ãµÄ¶Ñµş£¬¿ÉÒÔÔÚÕâ¶ù½øĞĞ´¦Àí¡£
-    def _get_lstm_features(self, sentence):  # ¸Ã¶ÎÓÃÓÚ»ñÈ¡¾ä×ÓµÄLSTMÌØÕ÷
-        self.hidden = self.init_hidden()  # Ê×ÏÈ³õÊ¼»¯Òş²Ø²ã²ÎÊı
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # È»ºóÍ¨¹ıÇ¶Èë²ã»ñµÃ¾ä×ÓµÄÇ¶Èë±íÊ¾£¬´óĞ¡ÎªxĞĞ1ÁĞ
-        lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # Ö±½ÓÍ¨¹ıpytorch¸ø¶¨µÄLSMTº¯Êı»ñÈ¡ÉÏÏÂÎÄÌØÕ÷
-        # ¸ù¾İÔÀ²©Ê¿µÄ½¨Òé£¬Ò»°ãÀ´ËµÕâ¶ùµÄhidden²ãÎ¬¶ÈÈ¡embedding²ãÎ¬¶È¿ª¸ùºÅ×î±È½ÏºÏÊÊµÄ¡£
-        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  #
+    # è¿™ä¸ª_get_lstm_featureså‡½æ•°å°±æ˜¯ç”¨äºè·å–LSTMçš„ç‰¹å¾ï¼Œå¦‚æœè¦è¿›è¡Œéšè—å±‚çš„å †å ï¼Œå¯ä»¥åœ¨è¿™å„¿è¿›è¡Œå¤„ç†ã€‚
+    def _get_lstm_features(self, sentence):  # è¯¥æ®µç”¨äºè·å–å¥å­çš„LSTMç‰¹å¾
+        self.hidden = self.init_hidden()  # é¦–å…ˆåˆå§‹åŒ–éšè—å±‚å‚æ•°
+        print(sentence)     #è¿™å„¿çš„sentenceæ˜¯å¥å­çš„one-hotç¼–ç 
+
+        #å¯¹äºåœ¨è¿™å„¿
+
+        embeds = self.word_embeds(sentence,1,0).view(len(sentence), 1, -1)  # ç„¶åé€šè¿‡åµŒå…¥å±‚è·å¾—å¥å­çš„åµŒå…¥è¡¨ç¤ºï¼Œå¤§å°ä¸ºxè¡Œ1åˆ—
+        lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # ç›´æ¥é€šè¿‡pytorchç»™å®šçš„LSMTå‡½æ•°è·å–ä¸Šä¸‹æ–‡ç‰¹å¾
+        # æ ¹æ®å²³åšå£«çš„å»ºè®®ï¼Œä¸€èˆ¬æ¥è¯´è¿™å„¿çš„hiddenå±‚ç»´åº¦å–embeddingå±‚ç»´åº¦å¼€æ ¹å·æœ€æ¯”è¾ƒåˆé€‚çš„ã€‚
+        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
 
         lstm_feats = self.hidden2tag(lstm_out)
         # print("the value of lstm_feats is:",lstm_feats)
         return lstm_feats
 
-    def _forward_alg(self, feats):  # Ê¹ÓÃÇ°ÏòËã·¨À´¼ÆËã·ÖÇøº¯Êı
+    def _forward_alg(self, feats):  # ä½¿ç”¨å‰å‘ç®—æ³•æ¥è®¡ç®—åˆ†åŒºå‡½æ•°
         init_alphas = torch.full((1, self.tagset_size), -10000.)
-        # torch.full(size,fill_value,out):ÊÇÖ¸·µ»ØÒ»¸öÖµÎªfill_value¡¢´óĞ¡ÎªsizeµÄÕÅÁ¿
-        # size:¶¨ÒåÊä³öÕÅÁ¿µÄĞÎ×´£»
-        # fill_value:¶¨ÒåÃ¿¸öÎ»ÖÃµÄÌî³äÖµ£»
-        # out£ºÉè¶¨Êä³öÕÅÁ¿£¬Ò»¶¨ÉèÖÃÎªNone£»
-        # Òò´ËÉÏÊ½¾ÍÊÇ·µ»ØÒ»¸ö1ĞĞtarget_sizeÁĞµÄÕÅÁ¿£¬Ã¿¸öÎ»ÖÃÉÏµÄÖµÎª-10000.0
+        # torch.full(size,fill_value,out):æ˜¯æŒ‡è¿”å›ä¸€ä¸ªå€¼ä¸ºfill_valueã€å¤§å°ä¸ºsizeçš„å¼ é‡
+        # size:å®šä¹‰è¾“å‡ºå¼ é‡çš„å½¢çŠ¶ï¼›
+        # fill_value:å®šä¹‰æ¯ä¸ªä½ç½®çš„å¡«å……å€¼ï¼›
+        # outï¼šè®¾å®šè¾“å‡ºå¼ é‡ï¼Œä¸€å®šè®¾ç½®ä¸ºNoneï¼›
+        # å› æ­¤ä¸Šå¼å°±æ˜¯è¿”å›ä¸€ä¸ª1è¡Œtarget_sizeåˆ—çš„å¼ é‡ï¼Œæ¯ä¸ªä½ç½®ä¸Šçš„å€¼ä¸º-10000.0
 
         init_alphas[0][self.tag_to_ix[START_TAG]] = 0.
-        # ½«³õÊ¼»¯µÄ²ÎÊıµÚ0ĞĞ£¬START_TAG±êÇ©ËùÔÚÁĞµÄÖµÉèÖÃÎª0
+        # å°†åˆå§‹åŒ–çš„å‚æ•°ç¬¬0è¡Œï¼ŒSTART_TAGæ ‡ç­¾æ‰€åœ¨åˆ—çš„å€¼è®¾ç½®ä¸º0
 
-        forward_var = init_alphas  # ¸³Öµ¸øforward
+        forward_var = init_alphas  # èµ‹å€¼ç»™forward
 
-        for feat in feats:  # µü´ú±éÀú¾ä×Ó£¬Õë¶ÔµÚÒ»¸ö¾ä×Ó
+        for feat in feats:  # è¿­ä»£éå†å¥å­ï¼Œé’ˆå¯¹ç¬¬ä¸€ä¸ªå¥å­
             alphas_t = []
             for next_tag in range(self.tagset_size):
                 emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size)
@@ -161,7 +162,7 @@ class BiLSTM_CRF(nn.Module):
         # print("the _forward_alg value is:",alpha)
         return alpha
 
-    def _score_sentence(self, feats, tags):  # ¶ÔÃ¿¸ö·ÖÇø¾ä×ÓµÄ´ò·Ö
+    def _score_sentence(self, feats, tags):  # å¯¹æ¯ä¸ªåˆ†åŒºå¥å­çš„æ‰“åˆ†
         # Gives the score of a provided tag sequence
         score = torch.zeros(1)
         tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
@@ -171,7 +172,7 @@ class BiLSTM_CRF(nn.Module):
         # print('the score of sentence is :',score)
         return score
 
-    def _viterbi_decode(self, feats):  # Ê¹ÓÃÎ¬ÌØ±ÈËã·¨´¦ÀíÊä³ö¶ËµÄ½âÂëÎÊÌâ£¬Õâ¸ö½×¶ÎÎÒ²»ĞèÒª½øĞĞ´¦Àí
+    def _viterbi_decode(self, feats):  # ä½¿ç”¨ç»´ç‰¹æ¯”ç®—æ³•å¤„ç†è¾“å‡ºç«¯çš„è§£ç é—®é¢˜ï¼Œè¿™ä¸ªé˜¶æ®µæˆ‘ä¸éœ€è¦è¿›è¡Œå¤„ç†
         backpointer = []
 
         init_vvars = torch.full((1, self.tagset_size), -10000.)
@@ -203,24 +204,21 @@ class BiLSTM_CRF(nn.Module):
         start = best_path.pop()
         assert start == self.tag_to_ix[START_TAG]
         best_path.reverse()
-        # print("the path_scores are:",path_score)
-        # print("the best_path is",best_path)
         return path_score, best_path
 
-    def neg_log_likelihood(self, sentence, tags):  # ¸Ãº¯ÊıÓÃÓÚ¹¹ÔìÄ£ĞÍµÄËğÊ§Öµ£¬
-        feats = self._get_lstm_features(sentence)  # µÃµ½Ò»¸ö¾ä×ÓµÄLSMTÅĞ¶¨½á¹û
-        forward_score = self._forward_alg(feats)  # ¸ù¾İLSTMµÄÅĞ¶¨¸ÅÂÊµÃµ½¶Ô¸ÃÅĞ¶¨½á¹ûµÄµÃ·Ö
-        gold_score = self._score_sentence(feats, tags)  # ×îÓÅĞòÁĞ½á¹ûµÄµÃ·Ö
-        # print("the diff of forward_score and gold_score is :",forward_score-gold_score)
+    def neg_log_likelihood(self, sentence, tags):  # è¯¥å‡½æ•°ç”¨äºæ„é€ æ¨¡å‹çš„æŸå¤±å€¼ï¼Œ
+        feats = self._get_lstm_features(sentence)  # å¾—åˆ°ä¸€ä¸ªå¥å­çš„LSMTåˆ¤å®šç»“æœ
+        forward_score = self._forward_alg(feats)  # æ ¹æ®LSTMçš„åˆ¤å®šæ¦‚ç‡å¾—åˆ°å¯¹è¯¥åˆ¤å®šç»“æœçš„å¾—åˆ†
+        gold_score = self._score_sentence(feats, tags)  # æœ€ä¼˜åºåˆ—ç»“æœçš„å¾—åˆ†
         return forward_score - gold_score
 
     def forward(self, sentence):
-        lstm_feats = self._get_lstm_features(sentence)  # µÃµ½LSTMµÄÊä³öÅĞ¶¨¸ÅÂÊ
+        lstm_feats = self._get_lstm_features(sentence)  # å¾—åˆ°LSTMçš„è¾“å‡ºåˆ¤å®šæ¦‚ç‡
 
-        score, tag_seq = self._viterbi_decode(lstm_feats)  # viterbi½ÓÊÕLSTMµÄÊä³ö£¬²¢·µ»Ø¸÷¸öÂ·¾¶µÄÆÀ·ÖÒÔ¼°×îÓÅµÄĞòÁĞ
-        return score, tag_seq  # Õâ¸ö¾ÍÊÇÕû¸öÄ£ĞÍµÄ×îÖÕÊä³ö£¬Ã¿´ÎÊä³öÓĞÁ½¸öÖµ£¬·Ö±ğÊÇ×îÓÅµÃ·Ö¼°Æä¶ÔÓ¦µÄĞòÁĞ
+        score, tag_seq = self._viterbi_decode(lstm_feats)  # viterbiæ¥æ”¶LSTMçš„è¾“å‡ºï¼Œå¹¶è¿”å›å„ä¸ªè·¯å¾„çš„è¯„åˆ†ä»¥åŠæœ€ä¼˜çš„åºåˆ—
+        return score, tag_seq  # è¿™ä¸ªå°±æ˜¯æ•´ä¸ªæ¨¡å‹çš„æœ€ç»ˆè¾“å‡ºï¼Œæ¯æ¬¡è¾“å‡ºæœ‰ä¸¤ä¸ªå€¼ï¼Œåˆ†åˆ«æ˜¯æœ€ä¼˜å¾—åˆ†åŠå…¶å¯¹åº”çš„åºåˆ—
 
-# ÑµÁ·½×¶Î£º¼ÓÈë×Ô¼º±ê×¢µÄÊı¾İºóµÄ½á¹û
+# è®­ç»ƒé˜¶æ®µï¼šåŠ å…¥è‡ªå·±æ ‡æ³¨çš„æ•°æ®åçš„ç»“æœ
 def dataset_get(filename):
     data = open(filename, 'r')
     content = data.readlines()
@@ -228,7 +226,7 @@ def dataset_get(filename):
 
     indexes = [0]
     for i in range(len(content)):
-        if content[i] == '\n':  # ÕÒµ½Ã¿¸öÎ»ÖÃÎª'\n'µÄË÷Òı
+        if content[i] == '\n':  # æ‰¾åˆ°æ¯ä¸ªä½ç½®ä¸º'\n'çš„ç´¢å¼•
             indexes.append(i)
 
     indexes.append(-1)
@@ -236,13 +234,13 @@ def dataset_get(filename):
     for value in range(2, len(indexes) - 1, 2):
         indexes[value] += 1
 
-    sentence_label = []  # ÓÃÀ´´æ´¢Ã¿¸ö·Ö¾äºóµÄ½á¹û
+    sentence_label = []  # ç”¨æ¥å­˜å‚¨æ¯ä¸ªåˆ†å¥åçš„ç»“æœ
     for value in range(0, len(indexes) - 1, 2):
         sentence_label.append(content[indexes[value]:indexes[value + 1]])
 
     sent_length = len(sentence_label)
-    # ½ÓÏÂÀ´ĞèÒª½«ÀïÃæµÄÃ¿¸öÎÄ±¾½øĞĞ×ª»»
-    # ³¤¶ÈÎª¾ä×Ó³¤¶È£¬Ã¿¸öÎ»ÖÃÉÏµÄÔªËØÓÉÁ½²¿·Ö¹¹³É£¬¼´tokenĞòÁĞºÍlabelĞòÁĞ¹¹³É
+    # æ¥ä¸‹æ¥éœ€è¦å°†é‡Œé¢çš„æ¯ä¸ªæ–‡æœ¬è¿›è¡Œè½¬æ¢
+    # é•¿åº¦ä¸ºå¥å­é•¿åº¦ï¼Œæ¯ä¸ªä½ç½®ä¸Šçš„å…ƒç´ ç”±ä¸¤éƒ¨åˆ†æ„æˆï¼Œå³tokenåºåˆ—å’Œlabelåºåˆ—æ„æˆ
     train_data = [[] for index in range(sent_length)]
 
     for i in range(sent_length):
@@ -256,8 +254,8 @@ def dataset_get(filename):
     return train_data
 
 
-train_data = dataset_get('test_data.txt')
-test_data = dataset_get('lqd_label_result_test.txt')
+train_data=dataset_get('../generate_data/train_data_zip.txt')
+test_data=dataset_get('../generate_data/test_data_zip.txt')
 
 
 tag_to_ix = {'B-VN': 0, 'I-VN': 1,
@@ -271,7 +269,7 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'B-VR': 16, 'I-VR': 17,
              'B-VF': 18, 'I-VF': 19,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
-# Ìí¼Ó×Ô¼º±ê×¢Êı¾İ²¿·Öµ½Õâ¶ùÎªÖ¹
+# æ·»åŠ è‡ªå·±æ ‡æ³¨æ•°æ®éƒ¨åˆ†åˆ°è¿™å„¿ä¸ºæ­¢
 
 word_to_ix = {}
 for sentence, tags in train_data:
@@ -287,20 +285,20 @@ for sentences, tages in test_data:
 model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)
 optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
-epoch_iter = 200
+epoch_iter = 10
 
 for epoch in range(epoch_iter):
     for sentence, tags in train_data:
-        model.zero_grad()  # Ã¿Ò»²½ÏÈÇå³ıÌİ¶È
+        model.zero_grad()  # æ¯ä¸€æ­¥å…ˆæ¸…é™¤æ¢¯åº¦
 
-        # ¹¹ÔìÊäÈë¾ä×Ó¸ñÊ½
+        # æ„é€ è¾“å…¥å¥å­æ ¼å¼
         sentence_in = prepare_sequence(sentence, word_to_ix)
         targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
 
-        # ¶ÔmodelÖ´ĞĞÇ°ÏòÔËĞĞ
+        # å¯¹modelæ‰§è¡Œå‰å‘è¿è¡Œ
         loss = model.neg_log_likelihood(sentence_in, targets)
 
-        # Ìİ¶È¸üĞÂÓë²ÎÊı¸üĞÂ
+        # æ¢¯åº¦æ›´æ–°ä¸å‚æ•°æ›´æ–°
         loss.backward()
         optimizer.step()
     print('Epoch [%d/%d] loss=%.4f' % (epoch + 1, epoch_iter, loss.item()))

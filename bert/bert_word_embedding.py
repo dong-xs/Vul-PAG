@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 tokenizer=BertTokenizer.from_pretrained('bert-base-cased')
 model = BertModel.from_pretrained('bert-base-cased', output_hidden_states=True)
 model.eval()
-sentence='The chpass command in OpenBSD allows a local user to gain root access through file descriptor leakage.'
+# sentence='The chpass command in OpenBSD allows a local user to gain root access through file descriptor leakage.'
 
 def BertEmbedding(content,summed_lasted_4_layer,concate_lasted_4_layer):
     #参数说明：
