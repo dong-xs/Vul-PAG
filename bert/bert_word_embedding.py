@@ -22,14 +22,14 @@ logging.basicConfig(level=logging.INFO)
 tokenizer=BertTokenizer.from_pretrained('bert-base-cased')
 model = BertModel.from_pretrained('bert-base-cased', output_hidden_states=True)
 model.eval()
-# sentence='The chpass command in OpenBSD allows a local user to gain root access through file descriptor leakage.'
+sentence='The chpass command in OpenBSD allows a local user to gain root access through file descriptor leakage.'
 
-def BertEmbedding(content,summed_lasted_4_layer,concate_lasted_4_layer):
+def BertEmbedding(content):
     #参数说明：
     #   content：表示输入的文本内容
     #   concate_lasted_4_layer：boolean类型，即选择以最后4层拼接的形式返回结果，默认为0
     #   summed_lasted_4_layer：boolean类型，即选择以最后4的拼接形式返回结果，默认为1
-    text_list='[CLS] '+content.strip()+ ' [SEP] '   # token_list存放了文本中的所有词
+    text_list=content.strip()   # token_list存放了文本中的所有词
     tokenized_text=tokenizer.tokenize(text_list)    # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
                                                     # 在这里需要按照spacy的tokenizer格式来处理
 
@@ -67,7 +67,12 @@ def BertEmbedding(content,summed_lasted_4_layer,concate_lasted_4_layer):
         summed_lasted_4_layer_list[tokenized_text[token_i]]=temp_summed_last_4
         #到目前为止，返回每个token的嵌入向量，以字典形式返回。
 
-    if concate_lasted_4_layer:
-        return concate_lasted_4_layer_list   #返回每个token的维度为3072
-    if summed_lasted_4_layer:
-        return summed_lasted_4_layer_list    #返回每个token的维度为768
+    # if concate_lasted_4_layer:
+    #     return concate_lasted_4_layer_list   #返回每个token的维度为3072
+    # if summed_lasted_4_layer:
+    return summed_lasted_4_layer_list    #返回每个token的维度为768
+
+outputs=BertModel(sentence)
+print(outputs)
+print(len(outputs))
+print(len(tokenizer(sentence)))

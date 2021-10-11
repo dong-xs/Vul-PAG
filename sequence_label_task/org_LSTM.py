@@ -131,7 +131,6 @@ class BiLSTM_CRF(nn.Module):
     def _get_lstm_features(self, sentence):  # 该段用于获取句子的LSTM特征
 
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
-        # print(sentence)   #此处的sentence是每个句子的one-hot编码
 
         embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列,每个位置上的
 
