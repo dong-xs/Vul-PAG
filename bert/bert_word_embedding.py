@@ -14,25 +14,36 @@
 '''
 
 import torch
-from transformers import BertModel,BertTokenizer
+# from transformers import BertModel,BertTokenizer,BertConfig
+from pytorch_pretrained_bert import BertModel,BertTokenizer,BertConfig
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-tokenizer=BertTokenizer.from_pretrained('bert-base-cased')
-model = BertModel.from_pretrained('bert-base-cased', output_hidden_states=True)
-model.eval()
+
+def bert_define(path='bert_base_cased'):
+    tokenizer=BertTokenizer.from_pretrained(path)
+    model_config=BertConfig.from_pretrained(path,output_hidden_states=True)
+    model=BertModel.from_pretrained(path,config=model_config)
+    return tokenizer,model
+
 sentence='The chpass command in OpenBSD allows a local user to gain root access through file descriptor leakage.'
 
-def BertEmbedding(content):
+def BertEmbedding(content,bertModel):
     #参数说明：
     #   content：表示输入的文本内容
     #   concate_lasted_4_layer：boolean类型，即选择以最后4层拼接的形式返回结果，默认为0
     #   summed_lasted_4_layer：boolean类型，即选择以最后4的拼接形式返回结果，默认为1
-    text_list=content.strip()   # token_list存放了文本中的所有词
-    tokenized_text=tokenizer.tokenize(text_list)    # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
-                                                    # 在这里需要按照spacy的tokenizer格式来处理
+    # text_list=content.strip()   # token_list存放了文本中的所有词
 
+    tokenizer,model=bertModel()
+
+    input_ids=tokenizer.encode(content)
+    print(input_ids)
+    tokenized_text=tokenizer.tokenize(content)    # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
+                                                    # 在这里需要按照spacy的tokenizer格式来处理
+    print(tokenized_text)
+    assert 0
     indexes_tokens=tokenizer.convert_tokens_to_ids(tokenized_text)     #将tokenizer后的结果全部转换为vocab_list中的索引
     segments_ids=[1]*len(tokenized_text)                #用于存储每个句子的切分情况
     tokens_tensor=torch.tensor([indexes_tokens])        #实现list向tensor的转换，便于与后续数据的数据结构一致
@@ -47,7 +58,7 @@ def BertEmbedding(content):
     outputs=output[2]    #只根据输出的最后一个参数来获取中间层的隐状态
 
     batch_i=0       #此处设置batch_i=0是因为每次送入bert的结果都是一个句子
-    concate_lasted_4_layer_list={}
+    # concate_lasted_4_layer_list={}
     summed_lasted_4_layer_list={}
     for token_i in range(len(tokenized_text)):   #对句子中的每个词进行遍历
         token_embedding = []   #记录一个词所有层的隐状态
@@ -60,8 +71,8 @@ def BertEmbedding(content):
 
         # 有两种方式来表示单词的最终向量：
         # （1）通过最后四层进行拼接来获得最终的嵌入向量表示，在使用该种情况表示最后的嵌入向量时，会存在维度过高而增加计算量
-        temp_concate_last_4=[torch.cat((layer[-1],layer[-2],layer[-3],layer[-4]),0) for layer in token_embedding]
-        concate_lasted_4_layer_list[tokenized_text[token_i]]=temp_concate_last_4
+        # temp_concate_last_4=[torch.cat((layer[-1],layer[-2],layer[-3],layer[-4]),0) for layer in token_embedding]
+        # concate_lasted_4_layer_list[tokenized_text[token_i]]=temp_concate_last_4
         # （2）通过将最后四层进行求和来获得最终的嵌入向量表示,此处返回的值维度为输入维度的正常值。
         temp_summed_last_4=[torch.sum(torch.stack(layer)[-4:],0) for layer in token_embedding]
         summed_lasted_4_layer_list[tokenized_text[token_i]]=temp_summed_last_4

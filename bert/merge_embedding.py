@@ -19,7 +19,7 @@ sentence = 'Arbitrary command execution via buffer overflow in Count.cgi (wwwcou
 sentence1 = 'Information from SSL-encrypted sessions via PKCS #1'
 # 问题又来了，如果将上面这个句子进行解析，会有这种上下序列解析不一致的情况，例如：Count.cgi在spacy中没有解析出错，但在bert中会解析为Count . c ##gi这四个部分。
 
-bert_embedding = BertEmbedding(sentence, 1, 0)     #bert_embedding的类型是一个字典类型，key值为一个subtoken，value为其tensor
+bert_embedding = BertEmbedding(sentence)     #bert_embedding的类型是一个字典类型，key值为一个subtoken，value为其tensor
 
 # 经tokenizer后发现，bert的token主要存在两种异常：
 # （1）因为bert使用的是wordpiece，所以会使得将一个长的单词切分成几段
