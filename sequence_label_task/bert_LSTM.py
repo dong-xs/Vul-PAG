@@ -22,82 +22,36 @@ HIDDEN_DIM=100        #隐藏层的维度
 
 def argmax(vec):
     _, idx = torch.max(vec, 1)
-    # torch.max(input,dim)：
-    # 输入：tensor，dim【说明：tensor就是一个输入值，dim表示维度，其中0表示每列的最大值，1表示每行的最大值】
-    # 输出：两个tensor，第一个tensor表示每行/每列的最大值，第二个tensor表示最大值的索引。
-    # 因此上面这一句的作用是返回一个输入tensor在行上的最大值，且将其索引存放于idx这样的一个tensor中
     return idx.item()  # tensor.item()表示获取该tensor的元素值
-    # 综上所述，该函数的意义就是返回一个输入tensor在一行上最大的索引值。
-
-
-def prepare_sequence(seq, to_ix):
-    # seq是一个输入的序列，
-    # to_ix是一个标签对序列
-    idxs = [to_ix[w] for w in seq]  # 这句代码的意思是将序列中的每个词转换到对应的的标签序列上，返回模式为一个列表
-    return torch.tensor(idxs, dtype=torch.long)  # 将上述列表形式转换为tensor格式
-
+    # 该函数的意义就是返回一个输入tensor在一行上最大的索引值。
 
 def log_sum_exp(vec):  # 返回一个tensor中所有值与最大值的log sum exp
     max_score = vec[0, argmax(vec)]  # argmax(vec)将返回vec在行上的最大值，则max_score将会存放vec向量在行上的最大值
     max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
-    # tensor.view(1,-1)表示将原始tensor改变为1行，
-    # tensor.expand(a,b)表示将原来的tensor复制扩展为a行b列的一个tensor，
-    # 因此max_score_broadcast存放的是以vec最大值为元素的1行vec元素个数列的tensor
     return max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
 
 
 class BiLSTM_CRF(nn.Module):
-    def __init__(self, vocab_size, tag_to_ix, embedding_dim, hidden_dim):
+    def __init__(self,tag_to_ix, embedding_dim, hidden_dim):
         # 需要输入的参数包括：文本大小、标签与索引对应列表、嵌入层维度、隐层维度
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
-        self.vocab_size = vocab_size
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)  # tagset_size用于存储标签类别数
 
-        # self.word_embeds=bertModel()   #使用bertModel作为word_embeds的方法，因为bert中需要用到的参数只有维度为768，在这里是不需要设置的
-
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
-        # 定义一个单层的LSTM单元，
-        # nn.LSTM(input_size,hidden_size,num_layers,bias,batch_first,dropout,bidirectional)。
-        # 输入：
-        #   input_size:输入数据的特征维数，也就是词向量的维度；
-        #   hidden_size: LSTM中隐层的维度；
-        #   请注意，这是设定值为hidden_dim//2是因为，在使用双向LSTM时，前向和后向的最终输出维度为hidden_dim//2，
-        #   将双向联合起来后其输出维度就是hidden_dim，这也便于后续的隐层向输出标签映射时的维度处理。但是隐藏层维度的意义是什么呢？
-        #   num_layers:循环神经网络的层数，就是有多少个LSTM层的堆叠：
-        #   如果设置多个网络层数，需要如何调整参数喃？
-        #   bias：是否使用偏置，是一个boolen类型；
-        #   batch_first:
-        #   dropout:默认情况是0，
-        #   bidirectional:是否使用双向LSTM，也是一个boolen类型。
-        # 输出：主要包括两个部分，即output，（hn，cn）
-        #       output：保存每个时间步的输出
-        #       hn：句子最后一个单词的隐状态
-        #       cn：句子最后一个单词的细胞状态
 
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)
-        # nn.Linear(in_feature,out_feature)用于设置网络中的全连接层
-        # in_feature:表示网络的输入维度；
-        # out_feature：表示网络的输出维度；
-        # 最终输出就是一个target_size行target_size列的tensor
 
         self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
-        # nn.Parameter()：这个函数可以理解为一个类型转换函数，就是将一个不可训练的tensor类型转换为可以训练的parameter类型；
-        # torch.randn(a,b)：返回一个随机标量矩阵，大小为a行b列，且生成的值符从正态分布；
-        # torch.rand(a,b):返回一个a行b列的随机标题矩阵，且内容符从均匀分布；
-        # 因此该语句的意思就是生成一个tagset_size大小的标准矩阵后并将其转换为可训练的parameter形式，存于transitions变量中。
 
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000
-        # 将START_TAG标签对应索引所在行全部设置为-10000
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
-        # 将STOP_TAG标签对应索引所在列全部设置为-10000
 
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
-        # 初始化的根本目的是随机生成输入时的h0，这里生成两个tensor的原因是使用BiLSTM，从前和从后面都需要初始化向量，但是每个向量的初始化为（2，1，hidden//2）是为啥喃？
         return (torch.randn(2, 1, self.hidden_dim // 2), torch.randn(2, 1, self.hidden_dim // 2))
 
     # 初始化隐藏层，隐藏层为两个2行1列的tensor构成，每个位置上tensor值由一个hidden_dim大小的tensor构成
@@ -108,24 +62,16 @@ class BiLSTM_CRF(nn.Module):
 
         embeds=spacy_bert_tokenizer_merge(sentence)   #这里的输入应当是一句话
 
-        # embeds = BertEmbedding(sentence,1,0).values().view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列
-        # embeds = BertEmbedding(sentence, 1, 0).values()
-
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
-        # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
+
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
 
         lstm_feats = self.hidden2tag(lstm_out)
-        # print("the value of lstm_feats is:",lstm_feats)
+
         return lstm_feats
 
     def _forward_alg(self, feats):  # 使用前向算法来计算分区函数
         init_alphas = torch.full((1, self.tagset_size), -10000.)
-        # torch.full(size,fill_value,out):是指返回一个值为fill_value、大小为size的张量
-        # size:定义输出张量的形状；
-        # fill_value:定义每个位置的填充值；
-        # out：设定输出张量，一定设置为None；
-        # 因此上式就是返回一个1行target_size列的张量，每个位置上的值为-10000.0
 
         init_alphas[0][self.tag_to_ix[START_TAG]] = 0.
         # 将初始化的参数第0行，START_TAG标签所在列的值设置为0
@@ -142,11 +88,11 @@ class BiLSTM_CRF(nn.Module):
             forward_var = torch.cat(alphas_t).view(1, -1)
         terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
         alpha = log_sum_exp(terminal_var)
-        # print("the _forward_alg value is:",alpha)
+
         return alpha
 
     def _score_sentence(self, feats, tags):  # 对每个分区句子的打分
-        # Gives the score of a provided tag sequence
+
         score = torch.zeros(1)
         tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
         for i, feat in enumerate(feats):
@@ -236,7 +182,6 @@ def dataset_get(filename):
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-
 train_data=dataset_get('../generate_data/train_data_zip.txt')
 test_data=dataset_get('../generate_data/test_data_zip.txt')
 
@@ -254,31 +199,21 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
 # 添加自己标注数据部分到这儿为止
 
-word_to_ix = {}   #存储语料中所有出现的词，并为每个词分配一个索引值
-for sentence, tags in train_data:
-    for word in sentence:
-        if word not in word_to_ix:
-            word_to_ix[word] = len(word_to_ix)
-
-for sentences, tages in test_data:
-    for word in sentences:
-        if word not in word_to_ix:
-            word_to_ix[word] = len(word_to_ix)
-
-model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)   #初始化一个模型，模型中可能用到的参数为四个，也就是说初始化的参数表示该类中可能用到的一些值
+model = BiLSTM_CRF(tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)   #初始化一个模型，模型中可能用到的参数为三个，也就是说初始化的参数表示该类中可能用到的一些值
 optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 epoch_iter = 10
 
 for epoch in range(epoch_iter):
     for sentence, tags in train_data:
+
         model.zero_grad()  # 每一步先清除梯度
         # 构造输入句子格式
-        sentence_in = prepare_sequence(sentence, word_to_ix)
+        sentence_in = ' '.join(sentence)
         targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
-        sentence=' '.join(sentence)
+
         # 对model执行前向运行
-        loss = model.neg_log_likelihood(sentence, targets)
+        loss = model.neg_log_likelihood(sentence_in, targets)
 
         # 梯度更新与参数更新
         loss.backward()
@@ -298,7 +233,7 @@ def accuracy(list1, list2):
 with torch.no_grad():
     accuracy_score = []
     for item in test_data:
-        precheck_sent = prepare_sequence(item[0], word_to_ix)
+        precheck_sent = ' '.join(item[0])
         predict_result = list(model(precheck_sent))
         accuracy_score.append(accuracy([tag_to_ix[value] for value in item[1]], predict_result[1]))
     print(accuracy_score)

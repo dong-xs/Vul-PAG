@@ -14,18 +14,18 @@ from numpy import *
 model_name = 'bert-base-cased'
 MODEL_PATH = 'bert-base-cased'
 
-tokenizer = BertTokenizer.from_pretrained(model_name,do_lower_case=False)
+tokenizer = BertTokenizer.from_pretrained(model_name, do_lower_case=False)
 model_config = BertConfig.from_pretrained(model_name)
 model_config.output_hidden_states = True
 model = BertModel.from_pretrained(MODEL_PATH, config=model_config)
 
-sentence = 'Management information base (MIB) for a 3Com SuperStack II hub running software version 2.10 contains an object identifier (.1.3.6.1.4.1.43.10.4.2) that is accessible by a read-only community string, but lists the entire table of community strings, which could allow attackers to conduct unauthorized activities.'
+# sentence = 'Management information base (MIB) for a 3Com SuperStack II hub running software version 2.10 contains an object identifier (.1.3.6.1.4.1.43.10.4.2) that is accessible by a read-only community string, but lists the entire table of community strings, which could allow attackers to conduct unauthorized activities.'
 
 
 # 问题又来了，如果将上面这个句子进行解析，会有这种上下序列解析不一致的情况，例如：Count.cgi在spacy中没有解析出错，但在bert中会解析为Count . c ##gi这四个部分。
 
 def BertEmbedding(content):
-    tokenized_text = tokenizer.tokenize(content,)  # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
+    tokenized_text = tokenizer.tokenize(content, )  # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
     # 在这里需要按照spacy的tokenizer格式来处理
     indexes_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)  # 将tokenizer后的结果全部转换为vocab_list中的索引
     segments_ids = [1] * len(tokenized_text)  # 用于存储每个句子的切分情况
@@ -55,15 +55,16 @@ def BertEmbedding(content):
         temp_summed_last_4 = [torch.sum(torch.stack(layer)[-4:], 0) for layer in token_embedding]
         summed_lasted_4_layer_list[tokenized_text[token_i]] = temp_summed_last_4
         # 到目前为止，返回每个token的嵌入向量，以字典形式返回。
+    print('org_bert_token:',summed_lasted_4_layer_list.keys())
     return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为：token：embedding
 
 
 # 说明：此处返回的是经过tokenizer后长度个数的，也就是说这是经过wordpiece后的值，还是需要将一定的值进行组合起来，构成一个完整的词的嵌入表示。，例如当前这句话给出来的词长度为24，
 
-spacy_nlp = spacy.load('en_core_web_sm')
+# spacy_nlp = spacy.load('en_core_web_sm')
 
 
-# spacy_nlp = spacy.load('en_core_web_md')
+spacy_nlp = spacy.load('en_core_web_md')
 
 
 # 经tokenizer后发现，bert的token主要存在两种异常：
@@ -130,10 +131,10 @@ def merge_embedding(sentence):  # 该函数实现将以“##”开头的词进�
 
     while '-10000' in bert_token:
         bert_token.remove('-10000')
-
+    print('合并##后的bert_token是')
+    print('bert_token is:',bert_token)
     new_bert_tokens = list(set(bert_token) | set(bert_token1))
     new_bert_embedding = []
-
     for tokens in new_bert_tokens:
         if tokens in bert_token:
             index = bert_token.index(tokens)
@@ -172,12 +173,16 @@ def spacy_bert_tokenizer_merge(content):
     diff_spacy = list(set(spacy_token) - set(bert_T))
     diff_result = {}  # 用于存储所有在diff_spacy中的结果
 
+    print('bert_t:',bert_T)
+    print('spacy_token:',spacy_token)
+    print("diff_spacy:",diff_spacy)
     for diff_s in diff_spacy:  # 遍历diff_spacy中的每一个元素
 
         copy_diff_s = diff_s
         index = []
         embedding = torch.zeros(1, 768)  # 生成一个一行768列的全0 tensor
         while diff_s != '':  # 当每一个元素不为空字符串时，因为split在最后一次切分后必定会出现一个空字符串''，以此作为循环结束条件
+            print(diff_s)
             temp_index, item = split_index(diff_s.strip(), bert_T)  # 将每个diff_s都在bert-T找到对应的词以及索引位置
             index.append(temp_index)  # 暂存每个子词的索引位置
             diff_s = diff_s.split(item, 1)[-1]  # 用于暂存split后的结果,split后会形成一个列表，因为设置了只分割一次，每次分割后用后面的一部分作为新的diff_s
@@ -194,3 +199,45 @@ def spacy_bert_tokenizer_merge(content):
         elif spacy_token[items] in list(diff_result.keys()):
             final_embed[items] = diff_result[spacy_token[items]]
     return final_embed
+
+def dataset_get(filename):
+    data = open(filename, 'r')
+    content = data.readlines()
+    data.close()
+
+    indexes = [0]
+    for i in range(len(content)):
+        if content[i] == '\n':  # 找到每个位置为'\n'的索引
+            indexes.append(i)
+
+    indexes.append(-1)
+
+    for value in range(2, len(indexes) - 1, 2):
+        indexes[value] += 1
+
+    sentence_label = []  # 用来存储每个分句后的结果
+    for value in range(0, len(indexes) - 1, 2):
+        sentence_label.append(content[indexes[value]:indexes[value + 1]])
+
+    sent_length = len(sentence_label)
+    # 接下来需要将里面的每个文本进行转换
+    # 长度为句子长度，每个位置上的元素由两部分构成，即token序列和label序列构成
+    train_data = [[] for index in range(sent_length)]
+
+    for i in range(sent_length):
+        temp_sent = []
+        temp_label = []
+        for value in sentence_label[i]:
+            lists = value.strip().split('  ')
+            temp_sent.append(lists[0])
+            temp_label.append(lists[1])
+        train_data[i] = (temp_sent, temp_label)
+    return train_data
+
+train_data=dataset_get('../generate_data/train_data_zip.txt')
+test_data=dataset_get('../generate_data/test_data_zip.txt')
+
+for item in train_data:
+    sentences=" ".join(item[0])
+    print(sentences)
+    print(spacy_bert_tokenizer_merge(sentences))
