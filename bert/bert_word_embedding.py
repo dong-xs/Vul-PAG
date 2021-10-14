@@ -14,7 +14,7 @@ from numpy import *
 model_name = 'bert-base-cased'
 MODEL_PATH = 'bert-base-cased'
 
-tokenizer = BertTokenizer.from_pretrained(model_name)
+tokenizer = BertTokenizer.from_pretrained(model_name,do_lower_case=False)
 model_config = BertConfig.from_pretrained(model_name)
 model_config.output_hidden_states = True
 model = BertModel.from_pretrained(MODEL_PATH, config=model_config)
@@ -25,8 +25,7 @@ sentence = 'Management information base (MIB) for a 3Com SuperStack II hub runni
 # 问题又来了，如果将上面这个句子进行解析，会有这种上下序列解析不一致的情况，例如：Count.cgi在spacy中没有解析出错，但在bert中会解析为Count . c ##gi这四个部分。
 
 def BertEmbedding(content):
-    tokenized_text = tokenizer.tokenize(content)  # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
-
+    tokenized_text = tokenizer.tokenize(content,)  # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
     # 在这里需要按照spacy的tokenizer格式来处理
     indexes_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)  # 将tokenizer后的结果全部转换为vocab_list中的索引
     segments_ids = [1] * len(tokenized_text)  # 用于存储每个句子的切分情况
@@ -61,8 +60,10 @@ def BertEmbedding(content):
 
 # 说明：此处返回的是经过tokenizer后长度个数的，也就是说这是经过wordpiece后的值，还是需要将一定的值进行组合起来，构成一个完整的词的嵌入表示。，例如当前这句话给出来的词长度为24，
 
-# spacy_nlp = spacy.load('en_core_web_sm')
-spacy_nlp = spacy.load('en_core_web_md')
+spacy_nlp = spacy.load('en_core_web_sm')
+
+
+# spacy_nlp = spacy.load('en_core_web_md')
 
 
 # 经tokenizer后发现，bert的token主要存在两种异常：
@@ -143,20 +144,20 @@ def merge_embedding(sentence):  # 该函数实现将以“##”开头的词进�
 
     return new_bert_tokens, new_bert_embedding  # 此时返回的是将“##”合并后的结果，但也会存在原句子中未分割的情况，需要在这儿将最开始的bert-token和bert-embedding当作值加进来
 
-def split_index(str1, list1):
-    '''
-    该函数的作用是：从一个列表中找出满足该字符串最长的列表中的值
-    '''
 
-    temp_index=[]
-    temp_item=[]
+def split_index(str1, list1):
+    temp_index = []
+    temp_item = []
     for items in list1:
-        if str1.startswith(items):
+        if str1.startswith(items) and items != '':
             temp_item.append(items)
             temp_index.append(list1.index(items))
-    max_len_item=max(temp_item,key=len,default='')
-    max_len_index=list1.index(max_len_item)
-    return max_len_index,max_len_item
+
+    max_len_item = max(temp_item, key=len, default='')
+
+    max_len_index = list1.index(max_len_item)
+    return max_len_index, max_len_item
+
 
 # step2：将已出现词组合成spacy token中的词形式，最终输出按照spacy token的顺序依次成为字典输出
 def spacy_bert_tokenizer_merge(content):
@@ -172,11 +173,11 @@ def spacy_bert_tokenizer_merge(content):
     diff_result = {}  # 用于存储所有在diff_spacy中的结果
 
     for diff_s in diff_spacy:  # 遍历diff_spacy中的每一个元素
+
         copy_diff_s = diff_s
         index = []
         embedding = torch.zeros(1, 768)  # 生成一个一行768列的全0 tensor
         while diff_s != '':  # 当每一个元素不为空字符串时，因为split在最后一次切分后必定会出现一个空字符串''，以此作为循环结束条件
-
             temp_index, item = split_index(diff_s.strip(), bert_T)  # 将每个diff_s都在bert-T找到对应的词以及索引位置
             index.append(temp_index)  # 暂存每个子词的索引位置
             diff_s = diff_s.split(item, 1)[-1]  # 用于暂存split后的结果,split后会形成一个列表，因为设置了只分割一次，每次分割后用后面的一部分作为新的diff_s
@@ -192,6 +193,4 @@ def spacy_bert_tokenizer_merge(content):
             final_embed[items] = bert_E[bert_T.index(spacy_token[items])]
         elif spacy_token[items] in list(diff_result.keys()):
             final_embed[items] = diff_result[spacy_token[items]]
-    return spacy_token,final_embed
-
-spa_token,final_embeds = spacy_bert_tokenizer_merge(sentence)
+    return final_embed
