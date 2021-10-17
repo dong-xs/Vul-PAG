@@ -1,10 +1,10 @@
-# encoding:utf-8
+#encoding:utf-8
 
 import torch
+import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from transformers import BertModel, BertTokenizer, BertConfig
 
 torch.manual_seed(1)  # 设置cpu的随机数固定
 device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
@@ -12,43 +12,8 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
 
-EMBEDDING_DIM = 768  # 嵌入层的维度
-HIDDEN_DIM = 100  # 隐藏层的维度
-
-model_name = 'bert-base-cased'
-MODEL_PATH = 'bert-base-cased'
-
-tokenizer = BertTokenizer.from_pretrained(model_name, do_lower_case=False)
-model_config = BertConfig.from_pretrained(model_name)
-model_config.output_hidden_states = True
-bert_model = BertModel.from_pretrained(MODEL_PATH, config=model_config)
-
-def BertEmbedding(tokenized_text):  #现在的输入就是一个tensor
-
-    tokens_tensor=tokenized_text.view(1,-1)
-
-    segments_tensor=torch.ones_like(tokens_tensor)
-
-    with torch.no_grad():
-        output = bert_model(tokens_tensor,segments_tensor)
-
-    outputs = output[2]  # 只根据输出的最后一个参数来获取中间层的隐状态
-
-    batch_i = 0  # 此处设置batch_i=0是因为每次送入bert的结果都是一个句子
-    summed_lasted_4_layer_list = {}
-    for token_i in range(len(tokenized_text)):  # 对句子中的每个词进行遍历
-        token_embedding = []  # 记录一个词所有层的隐状态
-        hidden_layers = []
-        for layer_i in range(len(outputs)):  # 对12个层进行逐层遍历
-            vec = outputs[layer_i][batch_i][token_i]  # 获取每一层对同一个词的隐状态表示，维度为[1,768]
-            hidden_layers.append(vec)  # 将每一层的隐状态加入到hidden_layers列表中，则该列表中存放的一个token所有层的隐状态，维度为[13,768]
-        token_embedding.append(hidden_layers)  # token_embedding存放的是所有token的所有层嵌入表示，维度为[1,13,768]
-        # 有一个疑问，这儿的token_embedding和hidden_layers存在的意义是重复的，而hidden_list仅仅只是将每一层的数据转换为一个list。
-
-        temp_summed_last_4 = [torch.sum(torch.stack(layer)[-4:], 0) for layer in token_embedding]
-        summed_lasted_4_layer_list[tokenized_text[token_i]] = temp_summed_last_4
-        # 到目前为止，返回每个token的嵌入向量，以字典形式返回。
-    return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为：token：embedding
+EMBEDDING_DIM=200     #嵌入层的维度
+HIDDEN_DIM=120        #隐藏层的维度
 
 def argmax(vec):
     _, idx = torch.max(vec, 1)
@@ -56,8 +21,8 @@ def argmax(vec):
 
 
 def prepare_sequence(seq, to_ix):
-    idxs = [to_ix[w] for w in seq]  # 这句代码的意思是将序列中的每个词转换到对应的的标签序列上，返回模式为一个列表
-    return torch.tensor(idxs, dtype=torch.long)  # 将上述列表形式转换为tensor格式
+    idxs = [to_ix[w] for w in seq]
+    return torch.tensor(idxs, dtype=torch.long)
 
 
 def log_sum_exp(vec):  # 返回一个tensor中所有值与最大值的log sum exp
@@ -65,46 +30,102 @@ def log_sum_exp(vec):  # 返回一个tensor中所有值与最大值的log sum ex
     max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
     return max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
 
+class SelfAttention(nn.Module):
+    def __init__(self, hid_dim, n_heads, dropout, device):
+        '''
+        :param hid_dim:隐藏层维度，即为上一个嵌入层的输出
+        :param n_heads: 多头数目，一般为12或24
+        :param dropout:dropout主要是为了过拟合而设置的,即在前向传播时,让某个激活值以一定的概率p停止工作,使模型的泛化性更强
+        :param device:确定是否需要使用GPU
+        '''
+        super().__init__()
+
+        self.hid_dim = hid_dim
+        self.n_heads = n_heads
+
+        assert hid_dim % n_heads == 0  # 设置断言，因为multihead_attention会把每个embedding拆分成n_heads份，
+        # 每一次拿每一份的相应部分作self_attention，最后再将所有结果组合起来即可，这也是narrow self-attention机制
+        self.w_q = nn.Linear(hid_dim, hid_dim)  # 即将w_q赋值为一个函数，其作用是输入一个hid_dim维的数据，输出一个hid_dim维的数据
+        #nn.Linear()函数的作用就是将实现两个向量的映射，在此过程中会随机分配一个qkv，而随着训练过程来更新qkv。
+        self.w_k = nn.Linear(hid_dim, hid_dim)
+        self.w_v = nn.Linear(hid_dim, hid_dim)
+
+        self.fc = nn.Linear(hid_dim, hid_dim)
+        self.do = nn.Dropout(dropout)
+
+        self.scale = torch.sqrt(torch.FloatTensor([hid_dim // n_heads])).to(device)
+
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.shape[0]
+        Q = self.w_q(query)
+        K = self.w_k(key)
+        V = self.w_v(value)
+
+        Q = Q.view(batch_size, -1, self.n_heads, self.hid_dim).permute(0, 2, 1, 3)
+        K = K.view(batch_size, -1, self.n_heads, self.hid_dim).permute(0, 2, 1, 3)
+        V = V.view(batch_size, -1, self.n_heads, self.hid_dim).permute(0, 2, 1, 3)
+
+        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) // self.scale
+
+        if mask is not None:
+            energy = energy.masked_fill(mask == 0, -1e10)
+
+        attention = torch.softmax(energy, dim=-1)
+
+        x = torch.matmul(attention, V)
+
+        x = x.permute(0, 2, 1, 3).contigous()
+        x = x.view(batch_size, -1, self.n_heads * (self.hid_dim // self.n_heads))
+        x = self.fc(x)
+        return x, attention
 
 class BiLSTM_CRF(nn.Module):
-    def __init__(self, tag_to_ix, embedding_dim, hidden_dim):
-
+    def __init__(self, vocab_size, tag_to_ix, embedding_dim, hidden_dim):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
-
+        self.vocab_size = vocab_size
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)  # tagset_size用于存储标签类别数
 
+        self.word_embeds = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
-
+        self.attention = SelfAttention(hidden_dim, n_heads=12, dropout=0.01, device=None)
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)
 
-        self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
 
+        self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
 
     def init_hidden(self):
         return (torch.randn(2, 1, self.hidden_dim // 2), torch.randn(2, 1, self.hidden_dim // 2))
 
-    # 这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
+
     def _get_lstm_features(self, sentence):  # 该段用于获取句子的LSTM特征
 
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
-        dict_embeds = BertEmbedding(sentence)     #这儿的输出是字典，需要将所有其全部转换为tensor值，表示格式为[seqlen,emb_dim]
-        embeds_value=[value[0] for _,value in dict_embeds.items()]    #现在得到的是一个长度为seqlen,每个维度的长度为768的列表形式
-        embeds=torch.cat(tuple(embeds_value),0).view(len(sentence), 1, -1)
+        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
-        # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  #
-        lstm_feats = self.hidden2tag(lstm_out)  # 返回每个词属于一个类别的概率值
+
+        _, attention_score = self.attention(lstm_out, lstm_out, lstm_out)
+
+        lstm_feats=self.hidden2tag(attention_score)
         return lstm_feats
+        # lstm_feats = self.hidden2tag(lstm_out)      #返回每个词属于一个类别的概率值
+        # return lstm_feats,attention_score
 
     def _forward_alg(self, feats):  # 使用前向算法来计算分区函数
         init_alphas = torch.full((1, self.tagset_size), -10000.)
+        # torch.full(size,fill_value,out):是指返回一个值为fill_value、大小为size的张量
+        # size:定义输出张量的形状；
+        # fill_value:定义每个位置的填充值；
+        # out：设定输出张量，一定设置为None；
+        # 因此上式就是返回一个1行target_size列的张量，每个位置上的值为-10000.0
 
         init_alphas[0][self.tag_to_ix[START_TAG]] = 0.
+        # 将初始化的参数第0行，START_TAG标签所在列的值设置为0
 
         forward_var = init_alphas  # 赋值给forward
 
@@ -121,6 +142,7 @@ class BiLSTM_CRF(nn.Module):
         return alpha
 
     def _score_sentence(self, feats, tags):  # 对每个分区句子的打分
+        # Gives the score of a provided tag sequence
         score = torch.zeros(1)
         tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
         for i, feat in enumerate(feats):
@@ -160,6 +182,8 @@ class BiLSTM_CRF(nn.Module):
         start = best_path.pop()
         assert start == self.tag_to_ix[START_TAG]
         best_path.reverse()
+        # print("the path_scores are:",path_score)
+        # print("the best_path is",best_path)
         return path_score, best_path
 
     def neg_log_likelihood(self, sentence, tags):  # 该函数用于构造模型的损失值，
@@ -173,7 +197,6 @@ class BiLSTM_CRF(nn.Module):
 
         score, tag_seq = self._viterbi_decode(lstm_feats)  # viterbi接收LSTM的输出，并返回各个路径的评分以及最优的序列
         return score, tag_seq  # 这个就是整个模型的最终输出，每次输出有两个值，分别是最优得分及其对应的序列
-
 
 # 训练阶段：加入自己标注的数据后的结果
 def dataset_get(filename):
@@ -211,8 +234,8 @@ def dataset_get(filename):
     return train_data
 
 
-train_data = dataset_get('../generate_data/train_data_zip.txt')
-test_data = dataset_get('../generate_data/test_data_zip.txt')
+train_data=dataset_get('../generate_data/train_data_zip.txt')
+test_data=dataset_get('../generate_data/test_data_zip.txt')
 
 tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'B-VV': 2, 'I-VV': 3,
@@ -226,8 +249,8 @@ tag_to_ix = {'B-VN': 0, 'I-VN': 1,
              'B-VF': 18, 'I-VF': 19,
              'O': 20, START_TAG: 21, STOP_TAG: 22}
 # 添加自己标注数据部分到这儿为止
-
-word_to_ix = {}  # 获取所有word对应的索引值
+from torch.autograd import Variable
+word_to_ix = {}     #获取所有word对应的索引值
 for sentence, tags in train_data:
     for word in sentence:
         if word not in word_to_ix:
@@ -238,18 +261,17 @@ for sentences, tages in test_data:
         if word not in word_to_ix:
             word_to_ix[word] = len(word_to_ix)
 
-#word_to_ix也是将每个词映射到对应的索引位置上
-model = BiLSTM_CRF(tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)  # 初始化一个模型
-optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)  # 使用SGD进行优化
+model = BiLSTM_CRF(len(word_to_ix), tag_to_ix, EMBEDDING_DIM, HIDDEN_DIM)      #初始化一个模型
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)      #使用SGD进行优化
 
-epoch_iter = 5
+epoch_iter = 2
 
 for epoch in range(epoch_iter):
     for sentence, tags in train_data:
         model.zero_grad()  # 每一步先清除梯度
+
         # 构造输入句子格式
         sentence_in = prepare_sequence(sentence, word_to_ix)
-
         targets = torch.tensor([tag_to_ix[t] for t in tags], dtype=torch.long)
         # sentence_in, targets = Variable(data).to(device), Variable(
         #     target).to(device)

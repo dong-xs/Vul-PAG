@@ -50,7 +50,7 @@ def BertEmbedding(tokenized_text):  #现在的输入就是一个tensor
         temp_summed_last_4 = [torch.sum(torch.stack(layer)[-4:], 0) for layer in token_embedding]
         summed_lasted_4_layer_list[tokenized_text[token_i]] = temp_summed_last_4
         # 到目前为止，返回每个token的嵌入向量，以字典形式返回。
-    return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为：token：embedding
+    return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为字典：token：embedding
 
 def charembedding(sentence,word_to_ix):   #这儿输入的sentence是每个词对应的索引值，需要将其还原为对应的词
     c2v_model = chars2vec.load_model('eng_150')
@@ -59,7 +59,7 @@ def charembedding(sentence,word_to_ix):   #这儿输入的sentence是每个词�
         sent.append(list(word_to_ix.keys())[list(word_to_ix.values()).index(word)])
     #sent中记录了所有索引值对应的单词
     char_embedding1 = c2v_model.vectorize_words(sent)
-    return char_embedding1
+    return char_embedding1     #返回形式为一个列表，其中每个位置上的值一个150维的列表
 
 def argmax(vec):
     _, idx = torch.max(vec, 1)
