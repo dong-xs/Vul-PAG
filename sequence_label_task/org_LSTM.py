@@ -132,8 +132,8 @@ class BiLSTM_CRF(nn.Module):
 
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
 
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列,每个位置上的
-
+        embeds = self.word_embeds(sentence)
+        embeds=embeds.view(len(sentence), 1, -1)  # 然后通过嵌入层获得句子的嵌入表示，大小为x行1列,每个位置上的
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
         # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  #

@@ -1,3 +1,5 @@
+#encoding:utf-8
+
 import chars2vec
 
 c2v_model=chars2vec.load_model('eng_150')
@@ -10,5 +12,5 @@ word_embedding1=c2v_model.vectorize_words(words1)
 print(word_embedding1.shape)
 
 '''
-    Ã÷Ìì×Ü½áÒ»ÏÂ£¬char embeddingµÄÊäÈëºÍÊä³öÊÇÊ²Ã´£¬ÒÔ¼°ÈçºÎĞŞ¸ÄÄ£ĞÍÀ´µ÷ÕûÄ£ĞÍµÄÊä³öÎ¬¶È¡£
+    æ˜å¤©æ€»ç»“ä¸€ä¸‹ï¼Œchar embeddingçš„è¾“å…¥å’Œè¾“å‡ºæ˜¯ä»€ä¹ˆï¼Œä»¥åŠå¦‚ä½•ä¿®æ”¹æ¨¡å‹æ¥è°ƒæ•´æ¨¡å‹çš„è¾“å‡ºç»´åº¦ã€‚
 '''

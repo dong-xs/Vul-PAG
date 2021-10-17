@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from transformers import BertModel, BertTokenizer, BertConfig
+from charEmbedding import *
+from charEmbedding import chars2vec
 
 torch.manual_seed(1)  # 设置cpu的随机数固定
 device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
@@ -12,7 +14,7 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
 
-EMBEDDING_DIM = 768  # 嵌入层的维度
+EMBEDDING_DIM = 918  # 嵌入层的维度
 HIDDEN_DIM = 100  # 隐藏层的维度
 
 model_name = 'bert-base-cased'
@@ -50,13 +52,22 @@ def BertEmbedding(tokenized_text):  #现在的输入就是一个tensor
         # 到目前为止，返回每个token的嵌入向量，以字典形式返回。
     return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为：token：embedding
 
+def charembedding(sentence,word_to_ix):   #这儿输入的sentence是每个词对应的索引值，需要将其还原为对应的词
+    c2v_model = chars2vec.load_model('eng_150')
+    sent=[]
+    for word in sentence:
+        sent.append(list(word_to_ix.keys())[list(word_to_ix.values()).index(word)])
+    #sent中记录了所有索引值对应的单词
+    char_embedding1 = c2v_model.vectorize_words(sent)
+    return char_embedding1
+
 def argmax(vec):
     _, idx = torch.max(vec, 1)
     return idx.item()
 
 
 def prepare_sequence(seq, to_ix):
-    idxs = [to_ix[w] for w in seq]  # 这句代码的意思是将序列中的每个词转换到对应的的标签序列上，返回模式为一个列表
+    idxs = [to_ix[w] for w in seq]  # 这句代码的意思是将序列中的每个词转换到对应的标签序列上，返回模式为一个列表
     return torch.tensor(idxs, dtype=torch.long)  # 将上述列表形式转换为tensor格式
 
 
@@ -72,16 +83,13 @@ class BiLSTM_CRF(nn.Module):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
-
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)  # tagset_size用于存储标签类别数
 
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2, num_layers=1, bidirectional=True)
-
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)
 
         self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
-
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
 
@@ -89,12 +97,18 @@ class BiLSTM_CRF(nn.Module):
         return (torch.randn(2, 1, self.hidden_dim // 2), torch.randn(2, 1, self.hidden_dim // 2))
 
     # 这个_get_lstm_features函数就是用于获取LSTM的特征，如果要进行隐藏层的堆叠，可以在这儿进行处理。
-    def _get_lstm_features(self, sentence):  # 该段用于获取句子的LSTM特征
+    def _get_lstm_features(self, sentence,word_to_ix):  # 该段用于获取句子的LSTM特征
 
         self.hidden = self.init_hidden()  # 首先初始化隐藏层参数
         dict_embeds = BertEmbedding(sentence)     #这儿的输出是字典，需要将所有其全部转换为tensor值，表示格式为[seqlen,emb_dim]
         embeds_value=[value[0] for _,value in dict_embeds.items()]    #现在得到的是一个长度为seqlen,每个维度的长度为768的列表形式
-        embeds=torch.cat(tuple(embeds_value),0).view(len(sentence), 1, -1)
+
+        word_embeds = torch.cat(tuple(embeds_value), 0).view(len(sentence),-1)
+
+        charembeds = torch.from_numpy(charembedding(sentence, word_to_ix))
+
+        embeds = torch.cat((word_embeds, charembeds), dim=1).view(len(sentence), 1, -1)
+
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)  # 直接通过pytorch给定的LSMT函数获取上下文特征
         # 根据岳博士的建议，一般来说这儿的hidden层维度取embedding层维度开根号最比较合适的。
         lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  #
@@ -162,14 +176,14 @@ class BiLSTM_CRF(nn.Module):
         best_path.reverse()
         return path_score, best_path
 
-    def neg_log_likelihood(self, sentence, tags):  # 该函数用于构造模型的损失值，
-        feats = self._get_lstm_features(sentence)  # 得到一个句子的LSMT判定结果
+    def neg_log_likelihood(self, sentence, tags,word_to_ix):  # 该函数用于构造模型的损失值，
+        feats = self._get_lstm_features(sentence,word_to_ix)  # 得到一个句子的LSMT判定结果
         forward_score = self._forward_alg(feats)  # 根据LSTM的判定概率得到对该判定结果的得分
         gold_score = self._score_sentence(feats, tags)  # 最优序列结果的得分
         return forward_score - gold_score
 
-    def forward(self, sentence):
-        lstm_feats = self._get_lstm_features(sentence)  # 得到LSTM的输出判定概率
+    def forward(self, sentence,word_to_ix):
+        lstm_feats = self._get_lstm_features(sentence,word_to_ix)  # 得到LSTM的输出判定概率
 
         score, tag_seq = self._viterbi_decode(lstm_feats)  # viterbi接收LSTM的输出，并返回各个路径的评分以及最优的序列
         return score, tag_seq  # 这个就是整个模型的最终输出，每次输出有两个值，分别是最优得分及其对应的序列
@@ -254,7 +268,7 @@ for epoch in range(epoch_iter):
         # sentence_in, targets = Variable(data).to(device), Variable(
         #     target).to(device)
         # 对model执行前向运行
-        loss = model.neg_log_likelihood(sentence_in, targets)
+        loss = model.neg_log_likelihood(sentence_in, targets,word_to_ix)
 
         # 梯度更新与参数更新
         loss.backward()
