@@ -12,7 +12,7 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 START_TAG = '<START>'
 STOP_TAG = '<STOP>'
 
-EMBEDDING_DIM=200     #嵌入层的维度
+EMBEDDING_DIM=300     #嵌入层的维度
 HIDDEN_DIM=120        #隐藏层的维度
 
 def argmax(vec):

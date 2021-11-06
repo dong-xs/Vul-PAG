@@ -19,13 +19,15 @@ model_config = BertConfig.from_pretrained(model_name)
 model_config.output_hidden_states = True
 model = BertModel.from_pretrained(MODEL_PATH, config=model_config)
 
-# sentence = 'Management information base (MIB) for a 3Com SuperStack II hub running software version 2.10 contains an object identifier (.1.3.6.1.4.1.43.10.4.2) that is accessible by a read-only community string, but lists the entire table of community strings, which could allow attackers to conduct unauthorized activities.'
-
-
+sentence = 'Management information base (MIB) for a 3Com SuperStack II hub running software version 2.10 contains an object identifier (.1.3.6.1.4.1.43.10.4.2) that is accessible by a read-only community string, but lists the entire table of community strings, which could allow attackers to conduct unauthorized activities.'
+sentence1='Management information base (MIB) for a 3Com SuperStack II hub running software version 2.10 contains an object identifier.'
+sentence2='Nanostructured Pt-alloy electrocatalysts for PEM fuel cell oxygen reduction reaction'
 # 问题又来了，如果将上面这个句子进行解析，会有这种上下序列解析不一致的情况，例如：Count.cgi在spacy中没有解析出错，但在bert中会解析为Count . c ##gi这四个部分。
 
 def BertEmbedding(content):
     tokenized_text = tokenizer.tokenize(content, )  # 此处的tokenizer会将一个完整的单词转换为多个小部分单词，
+    print("the tokenizer text is:",tokenized_text)
+    print(len(tokenized_text))
     # 在这里需要按照spacy的tokenizer格式来处理
     indexes_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)  # 将tokenizer后的结果全部转换为vocab_list中的索引
     segments_ids = [1] * len(tokenized_text)  # 用于存储每个句子的切分情况
@@ -40,6 +42,10 @@ def BertEmbedding(content):
         # hidden_state中存储的是12个layer中每一层的隐状态，且包含了每个词的嵌入表示，若要求每个词的最终嵌入，则需要将每个词的最后四层隐状态组合起来
 
     outputs = output[2]  # 只根据输出的最后一个参数来获取中间层的隐状态
+
+    print('the all embedding is:',outputs[-1][0])
+    print(outputs[-1][0].size())
+    assert ()
 
     batch_i = 0  # 此处设置batch_i=0是因为每次送入bert的结果都是一个句子
     summed_lasted_4_layer_list = {}
@@ -58,7 +64,7 @@ def BertEmbedding(content):
     print('org_bert_token:',summed_lasted_4_layer_list.keys())
     return summed_lasted_4_layer_list  # 返回每个token的维度为768,构成方式为：token：embedding
 
-
+BertEmbedding(sentence2)
 # 说明：此处返回的是经过tokenizer后长度个数的，也就是说这是经过wordpiece后的值，还是需要将一定的值进行组合起来，构成一个完整的词的嵌入表示。，例如当前这句话给出来的词长度为24，
 
 # spacy_nlp = spacy.load('en_core_web_sm')
@@ -234,10 +240,10 @@ def dataset_get(filename):
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-train_data=dataset_get('../generate_data/train_data_zip.txt')
-test_data=dataset_get('../generate_data/test_data_zip.txt')
-
-for item in train_data:
-    sentences=" ".join(item[0])
-    print(sentences)
-    print(spacy_bert_tokenizer_merge(sentences))
+# train_data=dataset_get('../generate_data/train_data_zip.txt')
+# test_data=dataset_get('../generate_data/test_data_zip.txt')
+#
+# for item in train_data:
+#     sentences=" ".join(item[0])
+#     print(sentences)
+#     print(spacy_bert_tokenizer_merge(sentences))
