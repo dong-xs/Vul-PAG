@@ -35,7 +35,8 @@ def dataset_get(filename):
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-get_data=dataset_get('../generate_data/train_data_zip_spacesplit_add4everyday.txt')
+# get_data=dataset_get('../generate_data/train_data_zip_spacesplit_add4everyday.txt')
+get_data=dataset_get('../train_data_zip_spacesplit.txt')
 labels=[]     #用于存放所有的原始标签
 for item in get_data:
     labels.append(item[-1])
