@@ -10,7 +10,7 @@ import pandas as pd
 import spacy
 
 spacy_nlp = spacy.load('en_core_web_md')
-content = pd.read_csv('labeled_24_31_space_new.csv', encoding='gb2312')
+content = pd.read_csv('labeled_data_2200.csv', encoding='gb2312')
 # content = pd.read_csv('train_data.csv', encoding='gb2312')
 # content = pd.read_csv('test_data.csv', encoding='gb2312')
 

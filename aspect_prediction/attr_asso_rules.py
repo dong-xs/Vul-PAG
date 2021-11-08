@@ -35,7 +35,7 @@ def dataset_get(filename):
         train_data[i] = (temp_sent, temp_label)
     return train_data
 
-get_data=dataset_get('../generate_data/train_data_zip_spacesplit_add4everyday.txt')
+get_data=dataset_get('../generate_data/train_data_zip_spacesplit.txt')
 labels=[]     #用于存放所有的原始标签
 for item in get_data:
     labels.append(item[-1])
@@ -166,8 +166,8 @@ if __name__ == "__main__":
     Test
     """
     data_set = label_seq
-    L, support_data = generate_L(data_set, k=4, min_support=0.01)
-    big_rules_list = generate_big_rules(L, support_data, min_conf=0.2)
+    L, support_data = generate_L(data_set, k=4, min_support=0.5)
+    big_rules_list = generate_big_rules(L, support_data, min_conf=0.5)
     for Lk in L:
         print("="*50)
         print("frequent " + str(len(list(Lk)[0])) + "-itemsets\t\tsupport")
