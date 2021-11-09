@@ -160,20 +160,19 @@ def generate_big_rules(L, support_data, min_conf):
             sub_set_list.append(freq_set)
     return big_rule_list
 
-
-if __name__ == "__main__":
-    """
-    Test
-    """
-    data_set = label_seq
-    L, support_data = generate_L(data_set, k=4, min_support=0.5)
-    big_rules_list = generate_big_rules(L, support_data, min_conf=0.5)
-    for Lk in L:
-        print("="*50)
-        print("frequent " + str(len(list(Lk)[0])) + "-itemsets\t\tsupport")
-        print("="*50)
-        for freq_set in Lk:
-            print(freq_set, support_data[freq_set])
-    print("Big Rules")
-    for item in big_rules_list:
-        print(item[0], "=>", item[1], "conf: ", item[2])
+# if __name__ == "__main__":
+#     """
+#     Test
+#     """
+#     data_set = label_seq
+#     L, support_data = generate_L(data_set, k=4, min_support=0.5)
+#     big_rules_list = generate_big_rules(L, support_data, min_conf=0.5)
+#     for Lk in L:
+#         print("="*50)
+#         print("frequent " + str(len(list(Lk)[0])) + "-itemsets\t\tsupport")
+#         print("="*50)
+#         for freq_set in Lk:
+#             print(freq_set, support_data[freq_set])
+#     print("Big Rules")
+#     for item in big_rules_list:
+#         print(item[0], "=>", item[1], "conf: ", item[2])
