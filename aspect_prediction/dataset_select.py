@@ -48,35 +48,30 @@ data=dataset_get('../generate_data/train_data_zip_spacesplit.txt')
 label_list=[]     #存储所有标签
 for item in data:
     label_list.append(item[1])   #每个cve条目所对应的标签集
-print('label_list is:')
-print(label_list)
 
 length=len(description)
 
-B_VAT_cveid_label=[]    #存储所有包含B_VAT的条目
+B_VAT_cveid_label=[]    #存储所有包含B_VAT的条目，存储形式为：cveid-labels
 B_VR_cveid_label=[]     #存储所有包含B_VR的条目
 B_VAV_cveid_label=[]    #存储所有包含B_VAV的条目
 
-#以下部分为根据关联规则来判断每个属性的big-rules
+def cveid_label_get(str1,labellists,cveids):
+    str_label_cveid=[]
+    for i in range(length):
+        if str1 in labellists[i]:
+            temp_list = []
+            for item in labellists[i]:
+                if item.startswith('B'):
+                    temp_list.append(item)
+            str_label_cveid.append((cveids[i], temp_list))
+    return str_label_cveid
 
-for i in range(length):
-    temp_list=[]
-    if 'B-VAT' in label_list[i]:
-        for item in label_list[i]:
-            if item.startswith('B'):
-                temp_list.append(item)
-        B_VAT_cveid_label.append((cveid[i],temp_list))
-    if 'B-VR' in label_list[i]:
-        for item in label_list[i]:
-            if item.startswith('B'):
-                temp_list.append(item)
-        B_VR_cveid_label.append((cveid[i],temp_list))
-    if 'B-VAV' in label_list[i]:
-        for item in label_list[i]:
-            if item.startswith('B'):
-                temp_list.append(item)
-        B_VAV_cveid_label.append((cveid[i],temp_list))
+B_VAT_cveid_label=cveid_label_get('B-VAT',label_list,cveid)
+# B_VR_cveid_label=cveid_label_get('B-VR',label_list,cveid)
+# B_VAV_cveid_label=cveid_label_get('B-VAV',label_list,cveid)
 
+
+'''
 #基于关联规则筛选各个属性的big rules
 B_VAT_data_set = [labels[1] for labels in B_VAT_cveid_label]
 B_VR_data_set = [labels[1] for labels in B_VR_cveid_label]
@@ -92,7 +87,7 @@ def function(dataset,k_degree,min_support,min_conf,output_item):
             temp_item.append(item)
 
     return temp_item
-
+'''
 '''
     规则一：
     设置如下支持度和置信度时：
@@ -107,7 +102,6 @@ def function(dataset,k_degree,min_support,min_conf,output_item):
     针对VAV，选择VN、VAT、VR；
     针对VAT，选择VN、VR、VAV；
 '''
-
 '''
     规则二：
     设置如下支持度和置信度时：
@@ -122,14 +116,35 @@ def function(dataset,k_degree,min_support,min_conf,output_item):
     针对VAV，选择VN、VAT、VR；
     针对VAT，选择VN、VR、VV；
 '''
-#先按照规则一，从原始数据中筛选各个类别的数据。
+#先按照规则一，从原始数据中筛选各个类别的数据，其实只需要记录每个cveid就可以了。
+#存放用于训练的数据项
 B_VAT_train_test_data=[]
-B_VAT_predict_data=[]
 B_VAV_train_test_data=[]
-B_VAV_predict_data=[]
 B_VR_train_test_data=[]
+#存放待预测项
+B_VAT_predict_data=[]
+B_VAV_predict_data=[]
 B_VR_predict_data=[]
+
 for item in B_VR_cveid_label:
-    print(item)
-    # if 'B-VN' in item and 'B-VAT' in item and 'B-VAV' in item:
-        # B_VAT_train_test_data.append()
+    if 'B-VN' in item[1] and 'B-VAT' in item[1] and 'B-VAV' in item[1]:
+        B_VR_train_test_data.append(item[0])
+for item in B_VAV_cveid_label:
+    if 'B-VN' in item[1] and 'B-VAT' in item[1] and 'B-VR' in item[1]:
+        B_VAV_train_test_data.append(item[0])
+for item in B_VAT_cveid_label:
+    if 'B-VN' in item[1] and 'B-VR' in item[1] and 'B-VAV' in item[1]:
+        B_VAT_train_test_data.append(item[0])
+
+for i in range(len(label_list)):
+    if 'B-VN' in label_list[i] and 'B-VAT' in label_list[i] and 'B-VAV' in label_list[i] and 'B-VR' not in label_list[i]:
+        B_VR_predict_data.append(cveid[i])
+    if 'B-VN' in label_list[i] and 'B-VAT' in label_list[i] and 'B-VR' in label_list[i] and 'B-VAV' not in label_list[i]:
+        B_VAV_predict_data.append(cveid[i])
+    if 'B-VN' in label_list[i] and 'B-VR' in label_list[i] and 'B-VAV' in label_list[i] and 'B-VAT' not in label_list[i]:
+        B_VAT_predict_data.append(cveid[i])
+
+#接下来应该将每个属性中的标签确定下来
+for cve_id in B_VR_train_test_data:
+    id_index=cveid.index(cve_id)
+    labellist=label_list[id_index]
