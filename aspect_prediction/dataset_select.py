@@ -116,35 +116,3 @@ def function(dataset,k_degree,min_support,min_conf,output_item):
     针对VAV，选择VN、VAT、VR；
     针对VAT，选择VN、VR、VV；
 '''
-#先按照规则一，从原始数据中筛选各个类别的数据，其实只需要记录每个cveid就可以了。
-#存放用于训练的数据项
-B_VAT_train_test_data=[]
-B_VAV_train_test_data=[]
-B_VR_train_test_data=[]
-#存放待预测项
-B_VAT_predict_data=[]
-B_VAV_predict_data=[]
-B_VR_predict_data=[]
-
-for item in B_VR_cveid_label:
-    if 'B-VN' in item[1] and 'B-VAT' in item[1] and 'B-VAV' in item[1]:
-        B_VR_train_test_data.append(item[0])
-for item in B_VAV_cveid_label:
-    if 'B-VN' in item[1] and 'B-VAT' in item[1] and 'B-VR' in item[1]:
-        B_VAV_train_test_data.append(item[0])
-for item in B_VAT_cveid_label:
-    if 'B-VN' in item[1] and 'B-VR' in item[1] and 'B-VAV' in item[1]:
-        B_VAT_train_test_data.append(item[0])
-
-for i in range(len(label_list)):
-    if 'B-VN' in label_list[i] and 'B-VAT' in label_list[i] and 'B-VAV' in label_list[i] and 'B-VR' not in label_list[i]:
-        B_VR_predict_data.append(cveid[i])
-    if 'B-VN' in label_list[i] and 'B-VAT' in label_list[i] and 'B-VR' in label_list[i] and 'B-VAV' not in label_list[i]:
-        B_VAV_predict_data.append(cveid[i])
-    if 'B-VN' in label_list[i] and 'B-VR' in label_list[i] and 'B-VAV' in label_list[i] and 'B-VAT' not in label_list[i]:
-        B_VAT_predict_data.append(cveid[i])
-
-#接下来应该将每个属性中的标签确定下来
-for cve_id in B_VR_train_test_data:
-    id_index=cveid.index(cve_id)
-    labellist=label_list[id_index]
