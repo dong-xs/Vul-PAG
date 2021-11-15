@@ -26,7 +26,7 @@ length = len(cvdids)
 B_VAV_train_test_index = []  # 存储用于训练B-VAV的数据集，每一个存储的是索引值
 B_VAT_train_test_index = []
 B_VR_train_test_index = []
-B_VAV_predict_index = []  # 存储需要预测B-VAV的数据集
+B_VAV_predict_index = []  # 存储需要预测B-VAV的数据集，每一个存储的也是索引值
 B_VAT_predict_index = []
 B_VR_predict_index = []
 # 全部过程都用索引值来记就ok
@@ -86,30 +86,59 @@ def function(start_label, end_label, train_test_set, label_set, vector_set):
         result_vector.append(temp_vector)
     return result_vector
 
-
-B_VAT_cluster_vectors=np.array(function('B-VAT','I-VAT',B_VAT_train_test_index,labels,vectors))[:,:-150]
+#只取前768维时
+# B_VAT_cluster_vectors=np.array(function('B-VAT','I-VAT',B_VAT_train_test_index,labels,vectors))[:,:-150]
 # B_VAV_cluster_vectors = np.array(function('B-VAV', 'I-VAV', B_VAV_train_test_index, labels, vectors))[:,:-150]    #只取前768的word embedding
 # B_VR_cluster_vectors=np.array(function('B-VR','I-VR',B_VR_train_test_index,labels,vectors))[:,:-150]
+
+#取768+150维时
+B_VAT_cluster_vectors=np.array(function('B-VAT','I-VAT',B_VAT_train_test_index,labels,vectors))
+# B_VAV_cluster_vectors = np.array(function('B-VAV', 'I-VAV', B_VAV_train_test_index, labels, vectors))
+# B_VR_cluster_vectors=np.array(function('B-VR','I-VR',B_VR_train_test_index,labels,vectors))
 
 from sklearn.cluster import KMeans
 
 kmeans = KMeans(n_clusters=5, random_state=0)
 kmeans.fit(B_VAT_cluster_vectors)
-predict_labels = kmeans.labels_
+predict_labels = kmeans.labels_      #预测标签结果
 
-label_index=[[] for i in range(len(predict_labels))]    #用于存放所有
-label_value=[[] for i in range(len(predict_labels))]
+label_count=set(predict_labels)
 
-for i in range(len(predict_labels)):
-    label_index[i].extend([j for j,x in enumerate(predict_labels) if x==i+1])
+label_index=[[] for i in range(len(label_count))]    #用于存放所有
+label_value=[[] for i in range(len(label_count))]
 
-for item in label_index:
-    for j in item:
+for i in range(len(label_count)):
+    label_index[i].extend([j for j,x in enumerate(predict_labels) if x==i])
+
+for i in range(len(label_index)):    #遍历每一个类别
+    for j in label_index[i]:          #遍历每一个类别的索引值,获取每一个索引值中的B-VAT所对应位置的原始值
+        start=[]
+        end=[]
+        # start=[value for value in labels[j] if value=='B-VAT']
+        for k in range(len(labels[j])-1):
+            if labels[j][k]=='B-VAT':
+                start.append(k)
+            if labels[j][k]=='I-VAT' and labels[j][k+1]!='I-VAT':
+                end.append(k)
+        if labels[j][-1]=='B-VAT':
+            end.append(len(labels[j])-1)
+
+        if len(start)==1 and len(end)==1 and start[0]<end[0]:   #如果只有一个B-VAT
+            label_value[i].append(''.join(tokens[j][start[0]:end[0]+1]))
+        elif len(start)==len(end) and len(start)>1:    #如果有多个B-VAT
+            for x,y in zip(start,end):
+                if x<y:
+                    label_value[i].append(''.join(tokens[j][x:y+1]))
+
+# final_result={}
+for i in range(len(label_index)):
+    print(label_index[i])
+    print(label_value[i])
+    print('==================================')
 
 
-# for item in label_index:
-#     print(item)
-#     print(len(item))
+
+
 #case 2：
 #当选用768维，且类别结果如下所示：
 # B-VAV:6
