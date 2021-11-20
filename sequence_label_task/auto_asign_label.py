@@ -9,8 +9,8 @@
 import pandas as pd
 import spacy
 
-spacy_nlp = spacy.load('en_core_web_md')
-content = pd.read_csv('labeled_data_2200.csv', encoding='gb2312')
+# spacy_nlp = spacy.load('en_core_web_md')
+content = pd.read_csv('labeled_data_2200-1.csv', encoding='gb2312')
 # content = pd.read_csv('train_data.csv', encoding='gb2312')
 # content = pd.read_csv('test_data.csv', encoding='gb2312')
 
@@ -27,17 +27,6 @@ v_result = content['VR(result)']
 
 import operator
 import re
-
-# def spilt_sentence(text):
-#     re_tokens = [t for t in re.split(r'\s+', text) if t]  # 判断是否为空时为了处理句尾有空格的情况
-#     tokens = []
-#     for token in re_tokens:
-#         if token.endswith(',') or token.endswith('.'):
-#             tokens.append(token[:-1])
-#             tokens.append(token[-1])
-#         else:
-#             tokens.append(token)
-#     return tokens
 
 def spilt_sentence(text):
     re_tokens = [t for t in re.split(r'[\s+]', text.replace('\"', '')) if t]  # 判断是否为空时为了处理句尾有空格的情况

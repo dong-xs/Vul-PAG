@@ -2,8 +2,9 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import torch
 
-content = pd.read_csv('predict.csv')
+content = pd.read_csv('predict_1.csv')
 
 cvdids = content['ID']
 descriptions = content['description']
@@ -80,6 +81,10 @@ def function(start_label, end_label, train_test_set, label_set, vector_set):
             for value in range(start, end + 1):
                 temp_vector += vector_set[item][value]
             temp_vector /= min_gap + 1
+            #根据文章《Dissecting Contextual Word Embeddings:Architecture and Representation》的说法，
+            # 对于有间距的短语表示，可以直接拼接头部token的embedding和最后token的embedding
+            temp_vector=vector_set[item][start].extend(vector_set[item][end])
+
         result_vector.append(temp_vector)
     return result_vector
 

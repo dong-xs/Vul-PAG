@@ -2,13 +2,10 @@
 
 import pandas as pd
 
-content1=pd.read_csv('predict.csv')
-
+content1=pd.read_csv('predict_1.csv')
 cveid=content1['ID'].tolist()
-
 tokens=content1['tokens']
 predict_label=content1['predict_label'].tolist()    #存放预测标签
-
 origin_label=[]                                     #存放原始标签
 
 def dataset_get(filename):
@@ -61,8 +58,24 @@ for i in range(length):
         if pre_lab[value]!=org_lab[value]:
             diff[i].append([org_tok[value],(pre_lab[value],org_lab[value])])   #存储每个预测错误的项
 
-with open('org_pred_diff.txt','w') as f:
+with open('org_pred_diff_1.txt','w') as f:
     for i in diff:
         f.write(str(i)+'\n')
 
-print('写入成功！')
+# #我想知道哪个类型的错误最多
+# target_set=['O','B-VN','B-VV','B-VT','B-VC','B-VAV','B-VR','B-VAT','B-VP','I-VN','I-VV','I-VT','I-VC','I-VAV','I-VR','I-VAT','I-VP']
+# diff_set_value=[]*len(target_set)
+#
+#
+# diff_count=dict(zip(target_set,diff_set_value))
+# # for item,value in diff_count.items():
+# #     print(item,value)
+# print(diff_count)
+# assert ()
+#
+# diff_list=[item[1:] for item in diff if len(item)>1]
+#
+# for item in diff_list:    #遍历每一个CVE的数据
+#     for value in item:    #遍历每一个CVE数据中的每一项
+#         temp_predict_label=value[1][0]
+#         temp_org_label=value[1][1]
